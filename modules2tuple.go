@@ -11,12 +11,15 @@ import (
 
 type Package struct {
 	Name    string // full package name
-	Account string // Guthub account
-	Project string // Guthub project
-	Tag     string // Tag or commit ID
+	Account string // Github account
+	Project string // Github project
+	Tag     string // tag or commit ID
 }
 
+// v2.0.0-rc1+incompatible
 var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(-[0-9A-Za-z]+[0-9A-Za-z\.-]+)?)(\+incompatible)?\z`)
+
+// v0.0.0-20181001143604-e0a95dfd547c
 var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-\d{14}-([0-9a-f]{7})[0-9a-f]+\z`)
 
 func ParsePackage(spec string) (*Package, error) {
