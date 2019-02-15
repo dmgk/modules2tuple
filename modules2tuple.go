@@ -117,7 +117,7 @@ func (pp PackagesByAccountAndProject) Swap(i, j int) {
 }
 
 func (pp PackagesByAccountAndProject) Less(i, j int) bool {
-	return pp[i].Account+"/"+pp[i].Project < pp[j].Account+"/"+pp[j].Project
+	return pp[i].String() < pp[j].String()
 }
 
 type WellKnown struct {

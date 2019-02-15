@@ -90,3 +90,21 @@ func TestStringer(t *testing.T) {
 		}
 	}
 }
+
+func TestPackageRename(t *testing.T) {
+	examples := [][]string{
+		// spec, renamed package String()
+		[]string{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/src/github.com/spf13/cobra"},
+	}
+
+	for i, x := range examples {
+		pkg, err := ParsePackage(x[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := pkg.String()
+		if s != x[1] {
+			t.Errorf("(%d) expected renamed package String() to return %q, got %q", i, x[1], s)
+		}
+	}
+}
