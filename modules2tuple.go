@@ -193,7 +193,7 @@ func main() {
 }
 
 func init() {
-	flag.StringVar(&packagePrefix, "prefix", "src", "package prefix")
+	flag.StringVar(&packagePrefix, "prefix", "vendor", "package prefix")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: %s [options] [modules.txt]\n", os.Args[0])
 		flag.PrintDefaults()
