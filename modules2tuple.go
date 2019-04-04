@@ -134,6 +134,7 @@ var wellKnownPackages = map[string]WellKnown{
 	"golang.org/x/sync":                      {"golang", "sync"},
 	"golang.org/x/sys":                       {"golang", "sys"},
 	"golang.org/x/text":                      {"golang", "text"},
+	"golang.org/x/time":                      {"golang", "time"},
 	"golang.org/x/tools":                     {"golang", "tools"},
 	"google.golang.org/appengine":            {"golang", "appengine"},
 	"gopkg.in/alexcesaro/quotedprintable.v3": {"alexcesaro", "quotedprintable"},
