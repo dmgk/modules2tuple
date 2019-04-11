@@ -72,11 +72,11 @@ func TestParseTag(t *testing.T) {
 func TestStringer(t *testing.T) {
 	examples := [][]string{
 		// spec, String()
-		[]string{"github.com/pkg/errors v1.0.0", "pkg:errors:v1.0.0:pkg_errors/src/github.com/pkg/errors"},
-		[]string{"github.com/pkg/errors v0.0.0-20181001143604-e0a95dfd547c", "pkg:errors:e0a95df:pkg_errors/src/github.com/pkg/errors"},
-		[]string{"github.com/pkg/errors v1.0.0-rc.1.2.3", "pkg:errors:v1.0.0-rc.1.2.3:pkg_errors/src/github.com/pkg/errors"},
-		[]string{"github.com/pkg/errors v0.12.3-0.20181001143604-e0a95dfd547c", "pkg:errors:e0a95df:pkg_errors/src/github.com/pkg/errors"},
-		[]string{"github.com/UserName/project-with-dashes v1.1.1", "UserName:project-with-dashes:v1.1.1:username_project_with_dashes/src/github.com/UserName/project-with-dashes"},
+		[]string{"github.com/pkg/errors v1.0.0", "pkg:errors:v1.0.0:pkg_errors/vendor/github.com/pkg/errors"},
+		[]string{"github.com/pkg/errors v0.0.0-20181001143604-e0a95dfd547c", "pkg:errors:e0a95df:pkg_errors/vendor/github.com/pkg/errors"},
+		[]string{"github.com/pkg/errors v1.0.0-rc.1.2.3", "pkg:errors:v1.0.0-rc.1.2.3:pkg_errors/vendor/github.com/pkg/errors"},
+		[]string{"github.com/pkg/errors v0.12.3-0.20181001143604-e0a95dfd547c", "pkg:errors:e0a95df:pkg_errors/vendor/github.com/pkg/errors"},
+		[]string{"github.com/UserName/project-with-dashes v1.1.1", "UserName:project-with-dashes:v1.1.1:username_project_with_dashes/vendor/github.com/UserName/project-with-dashes"},
 	}
 
 	for i, x := range examples {
@@ -94,7 +94,7 @@ func TestStringer(t *testing.T) {
 func TestPackageRename(t *testing.T) {
 	examples := [][]string{
 		// spec, renamed package String()
-		[]string{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/src/github.com/spf13/cobra"},
+		[]string{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/vendor/github.com/spf13/cobra"},
 	}
 
 	for i, x := range examples {

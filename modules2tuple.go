@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
+	"text/template"
 )
 
 type Package struct {
@@ -193,10 +195,24 @@ func main() {
 	}
 }
 
+var helpTemplate = template.Must(template.New("help").Parse(`
+Vendor package dependencies and then run {{.Name}} on vendor/modules.txt:
+
+	$ go mod vendor
+	$ {{.Name}} vendor/modules.txt
+
+By default, generated GH_TUPLE entries will place packages under "vendor".
+This can be changed by passing different prefix using -prefix option (e.g. -prefix src).
+`))
+
 func init() {
+	basename := path.Base(os.Args[0])
 	flag.StringVar(&packagePrefix, "prefix", "vendor", "package prefix")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: %s [options] [modules.txt]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] [modules.txt]\n", basename)
 		flag.PrintDefaults()
+		helpTemplate.Execute(os.Stderr, map[string]string{
+			"Name": basename,
+		})
 	}
 }
