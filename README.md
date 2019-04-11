@@ -1,5 +1,7 @@
 modules2tuple is a helper tool for generating GH_TUPLE from vendor/modules.txt
 
+[![Build Status](https://travis-ci.org/dmgk/modules2tuple.svg?branch=master)](https://travis-ci.org/dmgk/modules2tuple)
+
 #### Installation
 
     go get github.com/dmgk/modules2tuple
