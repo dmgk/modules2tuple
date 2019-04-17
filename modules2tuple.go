@@ -148,15 +148,16 @@ var packagePrefix string
 func main() {
 	flag.Parse()
 	args := flag.Args()
-	file := os.Stdin
 
-	if len(args) > 0 {
-		var err error
-		file, err = os.Open(args[0])
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+	if len(args) == 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	file, err := os.Open(args[0])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	var parsedPackages []*Package
@@ -209,7 +210,7 @@ func init() {
 	basename := path.Base(os.Args[0])
 	flag.StringVar(&packagePrefix, "prefix", "vendor", "package prefix")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] [modules.txt]\n", basename)
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] modules.txt\n", basename)
 		flag.PrintDefaults()
 		helpTemplate.Execute(os.Stderr, map[string]string{
 			"Name": basename,
