@@ -140,6 +140,7 @@ var wellKnownPackages = map[string]WellKnown{
 	"golang.org/x/tools":                     {"golang", "tools"},
 	"google.golang.org/appengine":            {"golang", "appengine"},
 	"gopkg.in/alexcesaro/quotedprintable.v3": {"alexcesaro", "quotedprintable"},
+	"gopkg.in/fsnotify.v1":                   {"fsnotify", "fsnotify"},
 	"gopkg.in/yaml.v2":                       {"go-yaml", "yaml"},
 }
 
