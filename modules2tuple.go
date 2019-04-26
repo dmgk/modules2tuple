@@ -161,10 +161,21 @@ var wellKnownPackages = map[string]WellKnown{
 	"gopkg.in/yaml.v2":                          {"go-yaml", "yaml"},
 }
 
-var packagePrefix string
+var (
+	packagePrefix string
+	flagVersion   bool
+)
+
+var version = "devel"
 
 func main() {
 	flag.Parse()
+
+	if flagVersion {
+		fmt.Fprintln(os.Stderr, version)
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 
 	if len(args) == 0 {
@@ -227,6 +238,7 @@ This can be changed by passing different prefix using -prefix option (e.g. -pref
 func init() {
 	basename := path.Base(os.Args[0])
 	flag.StringVar(&packagePrefix, "prefix", "vendor", "package prefix")
+	flag.BoolVar(&flagVersion, "v", false, "show version")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] modules.txt\n", basename)
 		flag.PrintDefaults()
