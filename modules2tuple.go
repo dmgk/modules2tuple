@@ -98,9 +98,11 @@ func (p *Package) Parsed() bool {
 	return p.Account != "" && p.Project != ""
 }
 
+var groupRe = regexp.MustCompile(`[^\w]+`)
+
 func (p *Package) Group() string {
 	g := p.Account + "_" + p.Project
-	g = strings.Replace(g, "-", "_", -1)
+	g = groupRe.ReplaceAllString(g, "_")
 	return strings.ToLower(g)
 }
 
@@ -130,18 +132,33 @@ type WellKnown struct {
 // List of well-known Github mirrors
 var wellKnownPackages = map[string]WellKnown{
 	// Package name                          GH Account, GH Project
-	"golang.org/x/crypto":                    {"golang", "crypto"},
-	"golang.org/x/net":                       {"golang", "net"},
-	"golang.org/x/oauth2":                    {"golang", "oauth2"},
-	"golang.org/x/sync":                      {"golang", "sync"},
-	"golang.org/x/sys":                       {"golang", "sys"},
-	"golang.org/x/text":                      {"golang", "text"},
-	"golang.org/x/time":                      {"golang", "time"},
-	"golang.org/x/tools":                     {"golang", "tools"},
-	"google.golang.org/appengine":            {"golang", "appengine"},
-	"gopkg.in/alexcesaro/quotedprintable.v3": {"alexcesaro", "quotedprintable"},
-	"gopkg.in/fsnotify.v1":                   {"fsnotify", "fsnotify"},
-	"gopkg.in/yaml.v2":                       {"go-yaml", "yaml"},
+	"cloud.google.com/go":                       {"googleapis", "google-cloud-go"},
+	"contrib.go.opencensus.io/exporter/ocagent": {"census-ecosystem", "opencensus-go-exporter-ocagent"},
+	"git.apache.org/thrift.git":                 {"apache", "thrift"},
+	"go.opencensus.io":                          {"census-instrumentation", "opencensus-go"},
+	"go.uber.org/atomic":                        {"uber-go", "atomic"},
+	"golang.org/x/crypto":                       {"golang", "crypto"},
+	"golang.org/x/net":                          {"golang", "net"},
+	"golang.org/x/oauth2":                       {"golang", "oauth2"},
+	"golang.org/x/sync":                         {"golang", "sync"},
+	"golang.org/x/sys":                          {"golang", "sys"},
+	"golang.org/x/text":                         {"golang", "text"},
+	"golang.org/x/time":                         {"golang", "time"},
+	"golang.org/x/tools":                        {"golang", "tools"},
+	"google.golang.org/api":                     {"googleapis", "google-api-go-client"},
+	"google.golang.org/appengine":               {"golang", "appengine"},
+	"google.golang.org/genproto":                {"google", "go-genproto"},
+	"google.golang.org/grpc":                    {"grpc", "grpc-go"},
+	"gopkg.in/Shopify/sarama.v1":                {"Shopify", "sarama"},
+	"gopkg.in/alexcesaro/quotedprintable.v3":    {"alexcesaro", "quotedprintable"},
+	"gopkg.in/fsnotify.v1":                      {"fsnotify", "fsnotify"},
+	"gopkg.in/ini.v1":                           {"go-ini", "ini"},
+	"gopkg.in/jcmturner/aescts.v1":              {"jcmturner", "aescts"},
+	"gopkg.in/jcmturner/dnsutils.v1":            {"jcmturner", "dnsutils"},
+	"gopkg.in/jcmturner/gokrb5.v5":              {"jcmturner", "gokrb5"},
+	"gopkg.in/jcmturner/rpc.v0":                 {"jcmturner", "rpc"},
+	"gopkg.in/olivere/elastic.v5":               {"olivere", "elastic"},
+	"gopkg.in/yaml.v2":                          {"go-yaml", "yaml"},
 }
 
 var packagePrefix string
