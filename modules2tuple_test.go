@@ -23,7 +23,7 @@ func TestParseName(t *testing.T) {
 			t.Errorf("(%d) expected Account to be %q, got %q", i, x[1], pkg.Account)
 		}
 		if pkg.Project != x[2] {
-			t.Errorf("(%d) expected Project to be %q, got %q", i, x[1], pkg.Project)
+			t.Errorf("(%d) expected Project to be %q, got %q", i, x[2], pkg.Project)
 		}
 	}
 }
@@ -105,6 +105,44 @@ func TestPackageRename(t *testing.T) {
 		s := pkg.String()
 		if s != x[1] {
 			t.Errorf("(%d) expected renamed package String() to return %q, got %q", i, x[1], s)
+		}
+	}
+}
+
+func TestParseGopkgIn(t *testing.T) {
+	examples := [][]string{
+		// name, Account, Project
+		[]string{"gopkg.in/pkg.v3", "go-pkg", "pkg"},
+		[]string{"gopkg.in/user/pkg.v3", "user", "pkg"},
+		[]string{"gopkg.in/pkg-with-dashes.v3", "go-pkg-with-dashes", "pkg-with-dashes"},
+		[]string{"gopkg.in/UserCaps-With-Dashes/0andCrazyPkgName.v3-alpha", "UserCaps-With-Dashes", "0andCrazyPkgName"},
+	}
+
+	for i, x := range examples {
+		account, project := parseGopkgInPackage(x[0])
+		if account != x[1] {
+			t.Errorf("(%d) expected Account to be %q, got %q", i, x[1], account)
+		}
+		if project != x[2] {
+			t.Errorf("(%d) expected Project to be %q, got %q", i, x[2], project)
+		}
+	}
+}
+
+func TestParseGolangOrgIn(t *testing.T) {
+	examples := [][]string{
+		// name, Account, Project
+		[]string{"golang.org/x/pkg", "golang", "pkg"},
+		[]string{"golang.org/x/oauth2", "golang", "oauth2"},
+	}
+
+	for i, x := range examples {
+		account, project := parseGolangOrgPackage(x[0])
+		if account != x[1] {
+			t.Errorf("(%d) expected Account to be %q, got %q", i, x[1], account)
+		}
+		if project != x[2] {
+			t.Errorf("(%d) expected Project to be %q, got %q", i, x[2], project)
 		}
 	}
 }

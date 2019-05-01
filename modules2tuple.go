@@ -67,31 +67,65 @@ func ParsePackage(spec string) (*Package, error) {
 		p := &Package{Name: name}
 
 		// Parse package name
-		if strings.HasPrefix(name, "github.com") {
-			nameParts := strings.Split(name, "/")
-			if len(nameParts) < 3 {
-				return nil, fmt.Errorf("unexpected Github package name: %q", name)
-			}
-			p.Account = nameParts[1]
-			p.Project = nameParts[2]
-		} else if wk, ok := wellKnownPackages[name]; ok {
+		if wk, ok := wellKnownPackages[name]; ok {
 			p.Account = wk.Account
 			p.Project = wk.Project
+		} else {
+			switch {
+			case strings.HasPrefix(name, "github.com"):
+				nameParts := strings.Split(name, "/")
+				if len(nameParts) < 3 {
+					return nil, fmt.Errorf("unexpected Github package name: %q", name)
+				}
+				p.Account = nameParts[1]
+				p.Project = nameParts[2]
+			case strings.HasPrefix(name, "gopkg.in"):
+				p.Account, p.Project = parseGopkgInPackage(name)
+			case strings.HasPrefix(name, "golang.org"):
+				p.Account, p.Project = parseGolangOrgPackage(name)
+			}
 		}
 
 		// Parse version
-		if tagRx.MatchString(version) {
+		switch {
+		case tagRx.MatchString(version):
 			sm := tagRx.FindAllStringSubmatch(version, -1)
 			p.Tag = sm[0][1]
-		} else if versionRx.MatchString(version) {
+		case versionRx.MatchString(version):
 			sm := versionRx.FindAllStringSubmatch(version, -1)
 			p.Tag = sm[0][1]
-		} else {
+		default:
 			return nil, fmt.Errorf("unexpected version string: %q", version)
 		}
 
 		return p, nil
 	}
+}
+
+// gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
+// gopkg.in/user/pkg.v3 -> github.com/user/pkg
+var gopkgInRx = regexp.MustCompile(`\Agopkg\.in/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+)?(?:/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+))?\z`)
+
+func parseGopkgInPackage(name string) (string, string) {
+	sm := gopkgInRx.FindAllStringSubmatch(name, -1)
+	if len(sm) == 0 {
+		return "", ""
+	}
+	if sm[0][2] == "" {
+		return "go-" + sm[0][1], sm[0][1]
+	}
+	return sm[0][1], sm[0][2]
+}
+
+// golang.org/x/pkg -> github.com/golang/pkg
+var golangOrgRx = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
+func parseGolangOrgPackage(name string) (string, string) {
+	sm := golangOrgRx.FindAllStringSubmatch(name, -1)
+	if len(sm) == 0 {
+		return "", ""
+	}
+	return "golang", sm[0][1]
 }
 
 func (p *Package) Parsed() bool {
@@ -134,34 +168,15 @@ var wellKnownPackages = map[string]WellKnown{
 	// Package name                          GH Account, GH Project
 	"cloud.google.com/go":                       {"googleapis", "google-cloud-go"},
 	"contrib.go.opencensus.io/exporter/ocagent": {"census-ecosystem", "opencensus-go-exporter-ocagent"},
+	"docker.io/go-docker":                       {"docker", "go-docker"},
 	"git.apache.org/thrift.git":                 {"apache", "thrift"},
 	"go.opencensus.io":                          {"census-instrumentation", "opencensus-go"},
 	"go.uber.org/atomic":                        {"uber-go", "atomic"},
-	"golang.org/x/crypto":                       {"golang", "crypto"},
-	"golang.org/x/net":                          {"golang", "net"},
-	"golang.org/x/oauth2":                       {"golang", "oauth2"},
-	"golang.org/x/sync":                         {"golang", "sync"},
-	"golang.org/x/sys":                          {"golang", "sys"},
-	"golang.org/x/text":                         {"golang", "text"},
-	"golang.org/x/time":                         {"golang", "time"},
-	"golang.org/x/tools":                        {"golang", "tools"},
 	"google.golang.org/api":                     {"googleapis", "google-api-go-client"},
 	"google.golang.org/appengine":               {"golang", "appengine"},
 	"google.golang.org/genproto":                {"google", "go-genproto"},
 	"google.golang.org/grpc":                    {"grpc", "grpc-go"},
-	"gopkg.in/Shopify/sarama.v1":                {"Shopify", "sarama"},
-	"gopkg.in/alexcesaro/quotedprintable.v3":    {"alexcesaro", "quotedprintable"},
 	"gopkg.in/fsnotify.v1":                      {"fsnotify", "fsnotify"},
-	"gopkg.in/ini.v1":                           {"go-ini", "ini"},
-	"gopkg.in/jcmturner/aescts.v1":              {"jcmturner", "aescts"},
-	"gopkg.in/jcmturner/dnsutils.v1":            {"jcmturner", "dnsutils"},
-	"gopkg.in/jcmturner/gokrb5.v5":              {"jcmturner", "gokrb5"},
-	"gopkg.in/jcmturner/rpc.v0":                 {"jcmturner", "rpc"},
-	"gopkg.in/olivere/elastic.v5":               {"olivere", "elastic"},
-	"gopkg.in/yaml.v2":                          {"go-yaml", "yaml"},
-	"docker.io/go-docker":                       {"docker", "go-docker"},
-	"gopkg.in/op/go-logging.v1":                 {"op", "go-logging"},
-	"gopkg.in/warnings.v0":                      {"go-warnings", "warnings"},
 }
 
 var (
