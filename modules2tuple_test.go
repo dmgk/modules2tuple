@@ -5,12 +5,23 @@ import "testing"
 func TestParseName(t *testing.T) {
 	examples := [][]string{
 		// spec, Account, Project
+
 		// Github
 		{"github.com/pkg/errors v1.0.0", "pkg", "errors"},
 		{"github.com/konsorten/go-windows-terminal-sequences v1.1.1", "konsorten", "go-windows-terminal-sequences"},
-		// Well-known packages
-		{"golang.org/x/crypto v1.0.0", "golang", "crypto"},
+
+		// gopkg.in
 		{"gopkg.in/yaml.v2 v2.0.0", "go-yaml", "yaml"},
+		{"gopkg.in/op/go-logging.v1 v1.0.0", "op", "go-logging"},
+		// gopkg.in/fsnotify is a special case
+		{"gopkg.in/fsnotify.v1 v1.0.0", "fsnotify", "fsnotify"},
+
+		// golang.org
+		{"golang.org/x/crypto v1.0.0", "golang", "crypto"},
+		{"golang.org/x/text v0.3.0", "golang", "text"},
+
+		// Other known mirrors
+		{"google.golang.org/api v1.0.0", "googleapis", "google-api-go-client"},
 	}
 
 	for i, x := range examples {
