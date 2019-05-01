@@ -53,53 +53,53 @@ func ParsePackage(spec string) (*Package, error) {
 		p.Name = pOld.Name
 
 		return p, nil
-	} else {
-		// Regular package spec
-
-		fields := strings.Fields(spec)
-		if len(fields) != 2 {
-			return nil, fmt.Errorf("unexpected number of fileds: %q", spec)
-		}
-
-		name := fields[0]
-		version := fields[1]
-
-		p := &Package{Name: name}
-
-		// Parse package name
-		if wk, ok := wellKnownPackages[name]; ok {
-			p.Account = wk.Account
-			p.Project = wk.Project
-		} else {
-			switch {
-			case strings.HasPrefix(name, "github.com"):
-				nameParts := strings.Split(name, "/")
-				if len(nameParts) < 3 {
-					return nil, fmt.Errorf("unexpected Github package name: %q", name)
-				}
-				p.Account = nameParts[1]
-				p.Project = nameParts[2]
-			case strings.HasPrefix(name, "gopkg.in"):
-				p.Account, p.Project = parseGopkgInPackage(name)
-			case strings.HasPrefix(name, "golang.org"):
-				p.Account, p.Project = parseGolangOrgPackage(name)
-			}
-		}
-
-		// Parse version
-		switch {
-		case tagRx.MatchString(version):
-			sm := tagRx.FindAllStringSubmatch(version, -1)
-			p.Tag = sm[0][1]
-		case versionRx.MatchString(version):
-			sm := versionRx.FindAllStringSubmatch(version, -1)
-			p.Tag = sm[0][1]
-		default:
-			return nil, fmt.Errorf("unexpected version string: %q", version)
-		}
-
-		return p, nil
 	}
+
+	// Regular package spec
+
+	fields := strings.Fields(spec)
+	if len(fields) != 2 {
+		return nil, fmt.Errorf("unexpected number of fileds: %q", spec)
+	}
+
+	name := fields[0]
+	version := fields[1]
+
+	p := &Package{Name: name}
+
+	// Parse package name
+	if wk, ok := wellKnownPackages[name]; ok {
+		p.Account = wk.Account
+		p.Project = wk.Project
+	} else {
+		switch {
+		case strings.HasPrefix(name, "github.com"):
+			nameParts := strings.Split(name, "/")
+			if len(nameParts) < 3 {
+				return nil, fmt.Errorf("unexpected Github package name: %q", name)
+			}
+			p.Account = nameParts[1]
+			p.Project = nameParts[2]
+		case strings.HasPrefix(name, "gopkg.in"):
+			p.Account, p.Project = parseGopkgInPackage(name)
+		case strings.HasPrefix(name, "golang.org"):
+			p.Account, p.Project = parseGolangOrgPackage(name)
+		}
+	}
+
+	// Parse version
+	switch {
+	case tagRx.MatchString(version):
+		sm := tagRx.FindAllStringSubmatch(version, -1)
+		p.Tag = sm[0][1]
+	case versionRx.MatchString(version):
+		sm := versionRx.FindAllStringSubmatch(version, -1)
+		p.Tag = sm[0][1]
+	default:
+		return nil, fmt.Errorf("unexpected version string: %q", version)
+	}
+
+	return p, nil
 }
 
 // gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
