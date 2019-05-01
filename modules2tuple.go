@@ -159,6 +159,9 @@ var wellKnownPackages = map[string]WellKnown{
 	"gopkg.in/jcmturner/rpc.v0":                 {"jcmturner", "rpc"},
 	"gopkg.in/olivere/elastic.v5":               {"olivere", "elastic"},
 	"gopkg.in/yaml.v2":                          {"go-yaml", "yaml"},
+	"docker.io/go-docker":                       {"docker", "go-docker"},
+	"gopkg.in/op/go-logging.v1":                 {"op", "go-logging"},
+	"gopkg.in/warnings.v0":                      {"go-warnings", "warnings"},
 }
 
 var (
