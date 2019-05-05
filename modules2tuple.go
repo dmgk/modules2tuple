@@ -28,7 +28,7 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 // v0.0.0-20181001143604-e0a95dfd547c
 // v1.2.3-20181001143604-e0a95dfd547c
 // v1.2.3-3.20181001143604-e0a95dfd547c
-var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:\d+\.)?\d{14}-([0-9a-f]{7})[0-9a-f]+\z`)
+var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:\d+\.)?\d{14}-([0-9a-f]+)\z`)
 
 func ParsePackage(spec string) (*Package, error) {
 	const replaceOp = " => "

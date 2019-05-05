@@ -62,10 +62,10 @@ func TestParseVersion(t *testing.T) {
 func TestParseTag(t *testing.T) {
 	examples := [][]string{
 		// spec, Tag
-		{"github.com/pkg/errors v0.0.0-20181001143604-e0a95dfd547c", "e0a95df"},
-		{"github.com/pkg/errors v1.2.3-20150716171945-2caba252f4dc", "2caba25"},
-		{"github.com/pkg/errors v1.2.3-0.20150716171945-2caba252f4dc", "2caba25"},
-		{"github.com/pkg/errors v1.2.3-42.20150716171945-2caba252f4dc", "2caba25"},
+		{"github.com/pkg/errors v0.0.0-20181001143604-e0a95dfd547c", "e0a95dfd547c"},
+		{"github.com/pkg/errors v1.2.3-20150716171945-2caba252f4dc", "2caba252f4dc"},
+		{"github.com/pkg/errors v1.2.3-0.20150716171945-2caba252f4dc", "2caba252f4dc"},
+		{"github.com/pkg/errors v1.2.3-42.20150716171945-2caba252f4dc", "2caba252f4dc"},
 	}
 
 	for i, x := range examples {
@@ -83,9 +83,9 @@ func TestStringer(t *testing.T) {
 	examples := [][]string{
 		// spec, String()
 		{"github.com/pkg/errors v1.0.0", "pkg:errors:v1.0.0:pkg_errors/vendor/github.com/pkg/errors"},
-		{"github.com/pkg/errors v0.0.0-20181001143604-e0a95dfd547c", "pkg:errors:e0a95df:pkg_errors/vendor/github.com/pkg/errors"},
+		{"github.com/pkg/errors v0.0.0-20181001143604-e0a95dfd547c", "pkg:errors:e0a95dfd547c:pkg_errors/vendor/github.com/pkg/errors"},
 		{"github.com/pkg/errors v1.0.0-rc.1.2.3", "pkg:errors:v1.0.0-rc.1.2.3:pkg_errors/vendor/github.com/pkg/errors"},
-		{"github.com/pkg/errors v0.12.3-0.20181001143604-e0a95dfd547c", "pkg:errors:e0a95df:pkg_errors/vendor/github.com/pkg/errors"},
+		{"github.com/pkg/errors v0.12.3-0.20181001143604-e0a95dfd547c", "pkg:errors:e0a95dfd547c:pkg_errors/vendor/github.com/pkg/errors"},
 		{"github.com/UserName/project-with-dashes v1.1.1", "UserName:project-with-dashes:v1.1.1:username_project_with_dashes/vendor/github.com/UserName/project-with-dashes"},
 	}
 
