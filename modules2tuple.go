@@ -177,6 +177,12 @@ var wellKnownPackages = map[string]WellKnown{
 	"google.golang.org/genproto":                {"google", "go-genproto"},
 	"google.golang.org/grpc":                    {"grpc", "grpc-go"},
 	"gopkg.in/fsnotify.v1":                      {"fsnotify", "fsnotify"},
+	"k8s.io/api":                                {"kubernetes", "api"},
+	"k8s.io/apimachinery":                       {"kubernetes", "apimachinery"},
+	"k8s.io/client-go":                          {"kubernetes", "client-go"},
+	"k8s.io/klog":                               {"kubernetes", "klog"},
+	"k8s.io/kube-openapi":                       {"kubernetes", "kube-openapi"},
+	"sigs.k8s.io/yaml":                          {"kubernetes-sigs", "yaml"},
 }
 
 var (
