@@ -20,6 +20,10 @@ func TestParseName(t *testing.T) {
 		{"golang.org/x/crypto v1.0.0", "golang", "crypto"},
 		{"golang.org/x/text v0.3.0", "golang", "text"},
 
+		// k8s.io
+		{"k8s.io/api v1.0.0", "kubernetes", "api"},
+		{"k8s.io/client-go v2.0.0", "kubernetes", "client-go"},
+
 		// Other known mirrors
 		{"google.golang.org/api v1.0.0", "googleapis", "google-api-go-client"},
 	}

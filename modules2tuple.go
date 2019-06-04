@@ -30,6 +30,16 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 // v1.2.3-3.20181001143604-e0a95dfd547c
 var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:\d+\.)?\d{14}-([0-9a-f]+)\z`)
 
+// gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
+// gopkg.in/user/pkg.v3 -> github.com/user/pkg
+var gopkgInRx = regexp.MustCompile(`\Agopkg\.in/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+)?(?:/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+))?\z`)
+
+// golang.org/x/pkg -> github.com/golang/pkg
+var golangOrgRx = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
+// k8s.io/api -> github.com/kubernetes/api
+var k8sIoRx = regexp.MustCompile(`\Ak8s\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
 func ParsePackage(spec string) (*Package, error) {
 	const replaceOp = " => "
 
@@ -80,10 +90,12 @@ func ParsePackage(spec string) (*Package, error) {
 			}
 			p.Account = nameParts[1]
 			p.Project = nameParts[2]
-		case strings.HasPrefix(name, "gopkg.in"):
+		case gopkgInRx.MatchString(name):
 			p.Account, p.Project = parseGopkgInPackage(name)
-		case strings.HasPrefix(name, "golang.org"):
+		case golangOrgRx.MatchString(name):
 			p.Account, p.Project = parseGolangOrgPackage(name)
+		case k8sIoRx.MatchString(name):
+			p.Account, p.Project = parseK8sIoPackage(name)
 		}
 	}
 
@@ -102,10 +114,6 @@ func ParsePackage(spec string) (*Package, error) {
 	return p, nil
 }
 
-// gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
-// gopkg.in/user/pkg.v3 -> github.com/user/pkg
-var gopkgInRx = regexp.MustCompile(`\Agopkg\.in/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+)?(?:/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+))?\z`)
-
 func parseGopkgInPackage(name string) (string, string) {
 	sm := gopkgInRx.FindAllStringSubmatch(name, -1)
 	if len(sm) == 0 {
@@ -117,15 +125,20 @@ func parseGopkgInPackage(name string) (string, string) {
 	return sm[0][1], sm[0][2]
 }
 
-// golang.org/x/pkg -> github.com/golang/pkg
-var golangOrgRx = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
-
 func parseGolangOrgPackage(name string) (string, string) {
 	sm := golangOrgRx.FindAllStringSubmatch(name, -1)
 	if len(sm) == 0 {
 		return "", ""
 	}
 	return "golang", sm[0][1]
+}
+
+func parseK8sIoPackage(name string) (string, string) {
+	sm := k8sIoRx.FindAllStringSubmatch(name, -1)
+	if len(sm) == 0 {
+		return "", ""
+	}
+	return "kubernetes", sm[0][1]
 }
 
 func (p *Package) Parsed() bool {
@@ -177,11 +190,6 @@ var wellKnownPackages = map[string]WellKnown{
 	"google.golang.org/genproto":                {"google", "go-genproto"},
 	"google.golang.org/grpc":                    {"grpc", "grpc-go"},
 	"gopkg.in/fsnotify.v1":                      {"fsnotify", "fsnotify"},
-	"k8s.io/api":                                {"kubernetes", "api"},
-	"k8s.io/apimachinery":                       {"kubernetes", "apimachinery"},
-	"k8s.io/client-go":                          {"kubernetes", "client-go"},
-	"k8s.io/klog":                               {"kubernetes", "klog"},
-	"k8s.io/kube-openapi":                       {"kubernetes", "kube-openapi"},
 	"sigs.k8s.io/yaml":                          {"kubernetes-sigs", "yaml"},
 }
 
