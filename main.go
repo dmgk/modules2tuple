@@ -220,6 +220,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	defer file.Close()
 
 	var parsedPackages []*Package
 	var unparsedPackages []*Package
