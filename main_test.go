@@ -70,6 +70,7 @@ func TestParseTag(t *testing.T) {
 		{"github.com/pkg/errors v1.2.3-20150716171945-2caba252f4dc", "2caba252f4dc"},
 		{"github.com/pkg/errors v1.2.3-0.20150716171945-2caba252f4dc", "2caba252f4dc"},
 		{"github.com/pkg/errors v1.2.3-42.20150716171945-2caba252f4dc", "2caba252f4dc"},
+		{"github.com/docker/libnetwork v0.8.0-dev.2.0.20180608203834-19279f049241", "19279f049241"},
 	}
 
 	for i, x := range examples {

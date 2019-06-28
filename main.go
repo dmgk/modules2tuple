@@ -28,7 +28,8 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 // v0.0.0-20181001143604-e0a95dfd547c
 // v1.2.3-20181001143604-e0a95dfd547c
 // v1.2.3-3.20181001143604-e0a95dfd547c
-var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:\d+\.)?\d{14}-([0-9a-f]+)\z`)
+// v0.8.0-dev.2.0.20180608203834-19279f049241
+var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:[0-9A-Za-z\.]+\.)?\d{14}-([0-9a-f]+)\z`)
 
 // gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
 // gopkg.in/user/pkg.v3 -> github.com/user/pkg
