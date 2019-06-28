@@ -24,6 +24,9 @@ func TestParseName(t *testing.T) {
 		{"k8s.io/api v1.0.0", "kubernetes", "api"},
 		{"k8s.io/client-go v2.0.0", "kubernetes", "client-go"},
 
+		// go.uber.org
+		{"go.uber.org/zap v1.10.0", "uber-go", "zap"},
+
 		// Other known mirrors
 		{"google.golang.org/api v1.0.0", "googleapis", "google-api-go-client"},
 	}

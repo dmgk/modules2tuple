@@ -41,6 +41,9 @@ var golangOrgRx = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)
 // k8s.io/api -> github.com/kubernetes/api
 var k8sIoRx = regexp.MustCompile(`\Ak8s\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
+// go.uber.org/zap -> github.com/uber-go/zap
+var goUberOrgRx = regexp.MustCompile(`\Ago\.uber\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
 func ParsePackage(spec string) (*Package, error) {
 	const replaceOp = " => "
 
@@ -97,6 +100,8 @@ func ParsePackage(spec string) (*Package, error) {
 			p.Account, p.Project = parseGolangOrgPackage(name)
 		case k8sIoRx.MatchString(name):
 			p.Account, p.Project = parseK8sIoPackage(name)
+		case goUberOrgRx.MatchString(name):
+			p.Account, p.Project = parseGoUberOrgPackage(name)
 		}
 	}
 
@@ -140,6 +145,14 @@ func parseK8sIoPackage(name string) (string, string) {
 		return "", ""
 	}
 	return "kubernetes", sm[0][1]
+}
+
+func parseGoUberOrgPackage(name string) (string, string) {
+	sm := goUberOrgRx.FindAllStringSubmatch(name, -1)
+	if len(sm) == 0 {
+		return "", ""
+	}
+	return "uber-go", sm[0][1]
 }
 
 func (p *Package) Parsed() bool {
