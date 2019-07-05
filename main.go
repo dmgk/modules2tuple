@@ -247,7 +247,8 @@ func main() {
 		}
 		b.WriteString(fmt.Sprintf("%s\n\t\t%s", eol, s))
 	}
-	for _, b := range bufs {
+	for _, k := range []tupleKind{kindGithub, kindGitlab} {
+		b := bufs[k]
 		if b.Len() > 0 {
 			fmt.Println(b.String())
 		}
