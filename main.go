@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"os"
@@ -12,11 +13,24 @@ import (
 	"text/template"
 )
 
-type Package struct {
-	Name    string // full package name
-	Account string // Github account
-	Project string // Github project
-	Tag     string // tag or commit ID
+type tupleKind int
+
+const (
+	kindGithub = iota
+	kindGitlab
+)
+
+var varName = map[tupleKind]string{
+	kindGithub: "GH_TUPLE",
+	kindGitlab: "GL_TUPLE",
+}
+
+type tuple struct {
+	kind    tupleKind
+	name    string // Go package name
+	account string // account
+	project string // project
+	tag     string // tag or commit ID
 }
 
 // v1.0.0
@@ -31,60 +45,44 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 // v0.8.0-dev.2.0.20180608203834-19279f049241
 var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:[0-9A-Za-z\.]+\.)?\d{14}-([0-9a-f]+)\z`)
 
-// gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
-// gopkg.in/user/pkg.v3 -> github.com/user/pkg
-var gopkgInRx = regexp.MustCompile(`\Agopkg\.in/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+)?(?:/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+))?\z`)
-
-// golang.org/x/pkg -> github.com/golang/pkg
-var golangOrgRx = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
-
-// k8s.io/api -> github.com/kubernetes/api
-var k8sIoRx = regexp.MustCompile(`\Ak8s\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
-
-// go.uber.org/zap -> github.com/uber-go/zap
-var goUberOrgRx = regexp.MustCompile(`\Ago\.uber\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
-
-func ParsePackage(spec string) (*Package, error) {
+func parseTuple(spec string) (*tuple, error) {
 	const replaceOp = " => "
 
+	// Replaced package spec
 	if strings.Contains(spec, replaceOp) {
-		// Replaced package spec
-
-		pkgs := strings.Split(spec, replaceOp)
-		if len(pkgs) != 2 {
+		parts := strings.Split(spec, replaceOp)
+		if len(parts) != 2 {
 			return nil, fmt.Errorf("unexpected number of packages in replace spec: %q", spec)
 		}
-		pOld, err := ParsePackage(pkgs[0])
+		tOld, err := parseTuple(parts[0])
 		if err != nil {
 			return nil, err
 		}
-		p, err := ParsePackage(pkgs[1])
+		t, err := parseTuple(parts[1])
 		if err != nil {
 			return nil, err
 		}
 
-		// Keep the old package Name but with new Account, Project and Tag
-		p.Name = pOld.Name
+		// Keep the old package name but with new account, project and tag
+		t.name = tOld.name
 
-		return p, nil
+		return t, nil
 	}
 
 	// Regular package spec
-
 	fields := strings.Fields(spec)
 	if len(fields) != 2 {
-		return nil, fmt.Errorf("unexpected number of fileds: %q", spec)
+		return nil, fmt.Errorf("unexpected number of fields: %q", spec)
 	}
 
 	name := fields[0]
 	version := fields[1]
-
-	p := &Package{Name: name}
+	t := &tuple{name: name}
 
 	// Parse package name
 	if wk, ok := wellKnownPackages[name]; ok {
-		p.Account = wk.Account
-		p.Project = wk.Project
+		t.account = wk.account
+		t.project = wk.project
 	} else {
 		switch {
 		case strings.HasPrefix(name, "github.com"):
@@ -92,16 +90,23 @@ func ParsePackage(spec string) (*Package, error) {
 			if len(nameParts) < 3 {
 				return nil, fmt.Errorf("unexpected Github package name: %q", name)
 			}
-			p.Account = nameParts[1]
-			p.Project = nameParts[2]
-		case gopkgInRx.MatchString(name):
-			p.Account, p.Project = parseGopkgInPackage(name)
-		case golangOrgRx.MatchString(name):
-			p.Account, p.Project = parseGolangOrgPackage(name)
-		case k8sIoRx.MatchString(name):
-			p.Account, p.Project = parseK8sIoPackage(name)
-		case goUberOrgRx.MatchString(name):
-			p.Account, p.Project = parseGoUberOrgPackage(name)
+			t.account = nameParts[1]
+			t.project = nameParts[2]
+		case strings.HasPrefix(name, "gitlab.com"):
+			nameParts := strings.Split(name, "/")
+			if len(nameParts) < 3 {
+				return nil, fmt.Errorf("unexpected Gitlab package name: %q", name)
+			}
+			t.kind = kindGitlab
+			t.account = nameParts[1]
+			t.project = nameParts[2]
+		default:
+			for _, vp := range vanityParsers {
+				if vp.Match(name) {
+					t.account, t.project = vp.Parse(name)
+					break
+				}
+			}
 		}
 	}
 
@@ -109,89 +114,60 @@ func ParsePackage(spec string) (*Package, error) {
 	switch {
 	case tagRx.MatchString(version):
 		sm := tagRx.FindAllStringSubmatch(version, -1)
-		p.Tag = sm[0][1]
+		t.tag = sm[0][1]
 	case versionRx.MatchString(version):
 		sm := versionRx.FindAllStringSubmatch(version, -1)
-		p.Tag = sm[0][1]
+		t.tag = sm[0][1]
 	default:
 		return nil, fmt.Errorf("unexpected version string: %q", version)
 	}
 
-	return p, nil
-}
-
-func parseGopkgInPackage(name string) (string, string) {
-	sm := gopkgInRx.FindAllStringSubmatch(name, -1)
-	if len(sm) == 0 {
-		return "", ""
-	}
-	if sm[0][2] == "" {
-		return "go-" + sm[0][1], sm[0][1]
-	}
-	return sm[0][1], sm[0][2]
-}
-
-func parseGolangOrgPackage(name string) (string, string) {
-	sm := golangOrgRx.FindAllStringSubmatch(name, -1)
-	if len(sm) == 0 {
-		return "", ""
-	}
-	return "golang", sm[0][1]
-}
-
-func parseK8sIoPackage(name string) (string, string) {
-	sm := k8sIoRx.FindAllStringSubmatch(name, -1)
-	if len(sm) == 0 {
-		return "", ""
-	}
-	return "kubernetes", sm[0][1]
-}
-
-func parseGoUberOrgPackage(name string) (string, string) {
-	sm := goUberOrgRx.FindAllStringSubmatch(name, -1)
-	if len(sm) == 0 {
-		return "", ""
-	}
-	return "uber-go", sm[0][1]
-}
-
-func (p *Package) Parsed() bool {
-	return p.Account != "" && p.Project != ""
+	return t, nil
 }
 
 var groupRe = regexp.MustCompile(`[^\w]+`)
 
-func (p *Package) Group() string {
-	g := p.Account + "_" + p.Project
-	g = groupRe.ReplaceAllString(g, "_")
-	return strings.ToLower(g)
+func (t *tuple) String() string {
+	group := t.account + "_" + t.project
+	group = groupRe.ReplaceAllString(group, "_")
+	group = strings.ToLower(group)
+	var comment string
+	if t.account == "" || t.project == "" {
+		comment = "# "
+	}
+	return fmt.Sprintf("%s%s:%s:%s:%s/%s/%s", comment, t.account, t.project, t.tag, group, flagPackagePrefix, t.name)
 }
 
-func (p *Package) String() string {
-	return fmt.Sprintf("%s:%s:%s:%s/%s/%s", p.Account, p.Project, p.Tag, p.Group(), packagePrefix, p.Name)
-}
+type ByAccountAndProject []*tuple
 
-type PackagesByAccountAndProject []*Package
-
-func (pp PackagesByAccountAndProject) Len() int {
+func (pp ByAccountAndProject) Len() int {
 	return len(pp)
 }
 
-func (pp PackagesByAccountAndProject) Swap(i, j int) {
+func (pp ByAccountAndProject) Swap(i, j int) {
 	pp[i], pp[j] = pp[j], pp[i]
 }
 
-func (pp PackagesByAccountAndProject) Less(i, j int) bool {
+func (pp ByAccountAndProject) Less(i, j int) bool {
+	// Commented lines sorted last
+	si, sj := pp[i].String(), pp[j].String()
+	if strings.HasPrefix(si, "#") {
+		if strings.HasPrefix(sj, "#") {
+			return pp[i].name < pp[j].name
+		}
+		return false
+	}
+	if strings.HasPrefix(sj, "#") {
+		return true
+	}
 	return pp[i].String() < pp[j].String()
 }
 
-type WellKnown struct {
-	Account string // Github account
-	Project string // Github project
-}
-
-// List of well-known Github mirrors
-var wellKnownPackages = map[string]WellKnown{
+// List of well known Github mirrors
+var wellKnownPackages = map[string]struct {
+	account string // Github account
+	project string // Github project
+}{
 	// Package name                              GH Account, GH Project
 	"camlistore.org":                            {"perkeep", "perkeep"},
 	"cloud.google.com/go":                       {"googleapis", "google-cloud-go"},
@@ -207,13 +183,6 @@ var wellKnownPackages = map[string]WellKnown{
 	"gopkg.in/fsnotify.v1":                      {"fsnotify", "fsnotify"}, // fsnotify is a special case in gopkg.in
 	"sigs.k8s.io/yaml":                          {"kubernetes-sigs", "yaml"},
 }
-
-var (
-	packagePrefix string
-	flagVersion   bool
-)
-
-var version = "devel"
 
 func main() {
 	flag.Parse()
@@ -237,39 +206,51 @@ func main() {
 	}
 	defer file.Close()
 
-	var parsedPackages []*Package
-	var unparsedPackages []*Package
 	const specPrefix = "# "
+	var tuples []*tuple
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, specPrefix) {
-			pkg, err := ParsePackage(strings.TrimPrefix(line, specPrefix))
+			t, err := parseTuple(strings.TrimPrefix(line, specPrefix))
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-			if pkg.Parsed() {
-				parsedPackages = append(parsedPackages, pkg)
-			} else {
-				unparsedPackages = append(unparsedPackages, pkg)
-			}
+			tuples = append(tuples, t)
 		}
 	}
 
-	sort.Sort(PackagesByAccountAndProject(parsedPackages))
+	sort.Sort(ByAccountAndProject(tuples))
 
-	fmt.Println("GH_TUPLE=\t\\")
-	for i, p := range parsedPackages {
-		fmt.Printf("\t\t%s", p)
-		if i < len(parsedPackages)-1 {
-			fmt.Print(" \\")
-		}
-		fmt.Println("")
+	bufs := map[tupleKind]*bytes.Buffer{
+		kindGithub: new(bytes.Buffer),
+		kindGitlab: new(bytes.Buffer),
 	}
-	for _, p := range unparsedPackages {
-		fmt.Printf("#\t\t%s\n", p)
+
+	for _, t := range tuples {
+		b, ok := bufs[t.kind]
+		if !ok {
+			panic(fmt.Sprintf("unknown tuple kind: %v", t.kind))
+		}
+		var eol string
+		if b.Len() == 0 {
+			b.WriteString(fmt.Sprintf("%s=\t", varName[t.kind]))
+			eol = "\\"
+		}
+		s := t.String()
+		if strings.HasPrefix(s, "#") {
+			eol = ""
+		} else if eol == "" {
+			eol = " \\"
+		}
+		b.WriteString(fmt.Sprintf("%s\n\t\t%s", eol, s))
+	}
+	for _, b := range bufs {
+		if b.Len() > 0 {
+			fmt.Println(b.String())
+		}
 	}
 }
 
@@ -283,9 +264,16 @@ By default, generated GH_TUPLE entries will place packages under "vendor".
 This can be changed by passing different prefix using -prefix option (e.g. -prefix src).
 `))
 
+var (
+	flagPackagePrefix string
+	flagVersion       bool
+)
+
+var version = "devel"
+
 func init() {
 	basename := path.Base(os.Args[0])
-	flag.StringVar(&packagePrefix, "prefix", "vendor", "package prefix")
+	flag.StringVar(&flagPackagePrefix, "prefix", "vendor", "package prefix")
 	flag.BoolVar(&flagVersion, "v", false, "show version")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] modules.txt\n", basename)

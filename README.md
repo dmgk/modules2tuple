@@ -1,4 +1,4 @@
-modules2tuple is a helper tool for generating GH_TUPLE from vendor/modules.txt
+modules2tuple is a helper tool for generating GH_TUPLE and GL_TUPLE from vendor/modules.txt
 
 [![Build Status](https://travis-ci.org/dmgk/modules2tuple.svg?branch=master)](https://travis-ci.org/dmgk/modules2tuple)
 
@@ -23,12 +23,12 @@ Vendor dependencies and run modules2tuple on vendor/modules.txt:
     $ go mod vendor
     $ modules2tuple vendor/modules.txt
 
-By default, generated GH_TUPLE entries will place packages under `vendor`. This
+By default, generated tuple entries will place packages under `vendor`. This
 can be changed by passing different prefix using -prefix option (e.g. `-prefix src`).
 
 
 #### Contributing
 
 modules2tuple knows about some GitHub mirrors and can automatically generate correct
-GH_TUPLE entries for them, but it always needs more. Please open a pull request or create an
+GH_TUPLE entries for them, but it always can use more. Please open a pull request or create an
 issue if you find some package names that it cannot handle (it leaves them commented out).
