@@ -11,6 +11,9 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+
+	"github.com/dmgk/modules2tuple/gitlab"
+	"github.com/dmgk/modules2tuple/vanity"
 )
 
 type tupleKind int
@@ -101,7 +104,7 @@ func parseTuple(spec string) (*tuple, error) {
 			t.account = nameParts[1]
 			t.project = nameParts[2]
 		default:
-			for _, vp := range vanityParsers {
+			for _, vp := range vanity.Parsers {
 				if vp.Match(pkg) {
 					t.account, t.project = vp.Parse(pkg)
 					break
@@ -120,6 +123,16 @@ func parseTuple(spec string) (*tuple, error) {
 		t.tag = sm[0][1]
 	default:
 		return nil, fmt.Errorf("unexpected version string: %q", version)
+	}
+
+	// Call Gitlab API to translate short commits IDs and tags
+	// to the full 32 character commit ID as required by bsd.sites.mk
+	if t.kind == kindGitlab {
+		c, err := gitlab.GetCommit(t.account, t.project, t.tag)
+		if err != nil {
+			return nil, err
+		}
+		t.tag = c.ID
 	}
 
 	return t, nil

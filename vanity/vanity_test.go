@@ -1,8 +1,8 @@
-package main
+package vanity
 
 import "testing"
 
-func testExamples(t *testing.T, p vanityParser, examples [][]string) {
+func testExamples(t *testing.T, p Parser, examples [][]string) {
 	for i, x := range examples {
 		if !p.Match(x[0]) {
 			t.Fatalf("%s parser: expected %q to match", p.Name(), x[0])
