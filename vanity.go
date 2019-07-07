@@ -4,12 +4,12 @@ import "regexp"
 
 type vanityParser interface {
 	Name() string
-	Match(name string) bool
-	Parse(name string) (string, string)
+	Match(pkg string) bool
+	Parse(pkg string) (string, string)
 }
 
 type vanityParserBase struct {
-	name string
+	name string // for failure reporting in tests
 	rx   *regexp.Regexp
 }
 
@@ -17,8 +17,8 @@ func (p vanityParserBase) Name() string {
 	return p.name
 }
 
-func (p vanityParserBase) Match(name string) bool {
-	return p.rx.MatchString(name)
+func (p vanityParserBase) Match(pkg string) bool {
+	return p.rx.MatchString(pkg)
 }
 
 // gopkg.in
@@ -38,8 +38,8 @@ func newGopkgInParser() *gopkgInParser {
 	}
 }
 
-func (p *gopkgInParser) Parse(name string) (string, string) {
-	sm := p.rx.FindAllStringSubmatch(name, -1)
+func (p *gopkgInParser) Parse(pkg string) (string, string) {
+	sm := p.rx.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
 		return "", ""
 	}
@@ -65,8 +65,8 @@ func newGolangOrgParser() *golangOrgParser {
 	}
 }
 
-func (p *golangOrgParser) Parse(name string) (string, string) {
-	sm := p.rx.FindAllStringSubmatch(name, -1)
+func (p *golangOrgParser) Parse(pkg string) (string, string) {
+	sm := p.rx.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
 		return "", ""
 	}
@@ -89,8 +89,8 @@ func newK8sIoParser() *k8sIoParser {
 	}
 }
 
-func (p *k8sIoParser) Parse(name string) (string, string) {
-	sm := p.rx.FindAllStringSubmatch(name, -1)
+func (p *k8sIoParser) Parse(pkg string) (string, string) {
+	sm := p.rx.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
 		return "", ""
 	}
@@ -113,8 +113,8 @@ func newGoUberOrgParser() *goUberOrgParser {
 	}
 }
 
-func (p *goUberOrgParser) Parse(name string) (string, string) {
-	sm := p.rx.FindAllStringSubmatch(name, -1)
+func (p *goUberOrgParser) Parse(pkg string) (string, string) {
+	sm := p.rx.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
 		return "", ""
 	}

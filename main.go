@@ -27,7 +27,7 @@ var varName = map[tupleKind]string{
 
 type tuple struct {
 	kind    tupleKind
-	name    string // Go package name
+	pkg     string // Go package name
 	account string // account
 	project string // project
 	tag     string // tag or commit ID
@@ -64,7 +64,7 @@ func parseTuple(spec string) (*tuple, error) {
 		}
 
 		// Keep the old package name but with new account, project and tag
-		t.name = tOld.name
+		t.pkg = tOld.pkg
 
 		return t, nil
 	}
@@ -75,35 +75,35 @@ func parseTuple(spec string) (*tuple, error) {
 		return nil, fmt.Errorf("unexpected number of fields: %q", spec)
 	}
 
-	name := fields[0]
+	pkg := fields[0]
 	version := fields[1]
-	t := &tuple{name: name}
+	t := &tuple{pkg: pkg}
 
 	// Parse package name
-	if wk, ok := wellKnownPackages[name]; ok {
+	if wk, ok := wellKnownPackages[pkg]; ok {
 		t.account = wk.account
 		t.project = wk.project
 	} else {
 		switch {
-		case strings.HasPrefix(name, "github.com"):
-			nameParts := strings.Split(name, "/")
-			if len(nameParts) < 3 {
-				return nil, fmt.Errorf("unexpected Github package name: %q", name)
+		case strings.HasPrefix(pkg, "github.com"):
+			parts := strings.Split(pkg, "/")
+			if len(parts) < 3 {
+				return nil, fmt.Errorf("unexpected Github package name: %q", pkg)
 			}
-			t.account = nameParts[1]
-			t.project = nameParts[2]
-		case strings.HasPrefix(name, "gitlab.com"):
-			nameParts := strings.Split(name, "/")
+			t.account = parts[1]
+			t.project = parts[2]
+		case strings.HasPrefix(pkg, "gitlab.com"):
+			nameParts := strings.Split(pkg, "/")
 			if len(nameParts) < 3 {
-				return nil, fmt.Errorf("unexpected Gitlab package name: %q", name)
+				return nil, fmt.Errorf("unexpected Gitlab package name: %q", pkg)
 			}
 			t.kind = kindGitlab
 			t.account = nameParts[1]
 			t.project = nameParts[2]
 		default:
 			for _, vp := range vanityParsers {
-				if vp.Match(name) {
-					t.account, t.project = vp.Parse(name)
+				if vp.Match(pkg) {
+					t.account, t.project = vp.Parse(pkg)
 					break
 				}
 			}
@@ -135,7 +135,7 @@ func (t *tuple) String() string {
 	if t.account == "" || t.project == "" {
 		comment = "# "
 	}
-	return fmt.Sprintf("%s%s:%s:%s:%s/%s/%s", comment, t.account, t.project, t.tag, group, flagPackagePrefix, t.name)
+	return fmt.Sprintf("%s%s:%s:%s:%s/%s/%s", comment, t.account, t.project, t.tag, group, flagPackagePrefix, t.pkg)
 }
 
 type ByAccountAndProject []*tuple
@@ -153,7 +153,7 @@ func (pp ByAccountAndProject) Less(i, j int) bool {
 	si, sj := pp[i].String(), pp[j].String()
 	if strings.HasPrefix(si, "#") {
 		if strings.HasPrefix(sj, "#") {
-			return pp[i].name < pp[j].name
+			return pp[i].pkg < pp[j].pkg
 		}
 		return false
 	}
@@ -237,13 +237,13 @@ func main() {
 		var eol string
 		if b.Len() == 0 {
 			b.WriteString(fmt.Sprintf("%s=\t", varName[t.kind]))
-			eol = "\\"
+			eol = `\`
 		}
 		s := t.String()
 		if strings.HasPrefix(s, "#") {
 			eol = ""
 		} else if eol == "" {
-			eol = " \\"
+			eol = ` \`
 		}
 		b.WriteString(fmt.Sprintf("%s\n\t\t%s", eol, s))
 	}
