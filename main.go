@@ -127,7 +127,7 @@ func parseTuple(spec string) (*tuple, error) {
 
 	// Call Gitlab API to translate short commits IDs and tags
 	// to the full 32 character commit ID as required by bsd.sites.mk
-	if t.kind == kindGitlab {
+	if !flagOffline && t.kind == kindGitlab {
 		c, err := gitlab.GetCommit(t.account, t.project, t.tag)
 		if err != nil {
 			return nil, err
@@ -279,16 +279,18 @@ This can be changed by passing different prefix using -prefix option (e.g. -pref
 `))
 
 var (
-	flagPackagePrefix string
-	flagVersion       bool
+	flagOffline       = false
+	flagPackagePrefix = "vendor"
+	flagVersion       = false
 )
 
 var version = "devel"
 
 func init() {
 	basename := path.Base(os.Args[0])
+	flag.BoolVar(&flagOffline, "offline", flagOffline, "disable network access")
 	flag.StringVar(&flagPackagePrefix, "prefix", "vendor", "package prefix")
-	flag.BoolVar(&flagVersion, "v", false, "show version")
+	flag.BoolVar(&flagVersion, "v", flagVersion, "show version")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] modules.txt\n", basename)
 		flag.PrintDefaults()
