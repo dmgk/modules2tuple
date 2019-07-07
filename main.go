@@ -271,11 +271,17 @@ func main() {
 var helpTemplate = template.Must(template.New("help").Parse(`
 Vendor package dependencies and then run {{.Name}} on vendor/modules.txt:
 
-	$ go mod vendor
-	$ {{.Name}} vendor/modules.txt
+  $ go mod vendor
+  $ {{.Name}} vendor/modules.txt
 
 By default, generated GH_TUPLE entries will place packages under "vendor".
-This can be changed by passing different prefix using -prefix option (e.g. -prefix src).
+This can be changed by passing different prefix using -prefix option (e.g.
+-prefix src).
+
+When generating GL_TUPLE entries, modules2tuple will attempt to use Gitlab
+API to resolve short commit IDs and tags to the full 40-character IDs as
+required by bsd.sites.mk. If network access is not available or not wanted,
+this commit ID translation can be disabled with -offline flag.
 `))
 
 var (
