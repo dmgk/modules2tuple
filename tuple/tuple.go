@@ -96,7 +96,7 @@ func (tt Tuples) String() string {
 			eol = `\`
 		}
 		s := t.String()
-		if strings.HasPrefix(s, "#") {
+		if strings.HasPrefix(s, comment) {
 			eol = ""
 		} else if eol == "" {
 			eol = ` \`
