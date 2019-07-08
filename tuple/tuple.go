@@ -108,8 +108,8 @@ func (tt Tuples) String() string {
 	for _, k := range []Kind{KindGithub, KindGitlab} {
 		b := bufs[k].Bytes()
 		if len(b) > 0 {
-			sb.WriteRune('\n')
 			sb.Write(bufs[k].Bytes())
+			sb.WriteRune('\n')
 		}
 	}
 
