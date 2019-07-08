@@ -2,8 +2,6 @@ package vanity
 
 import "regexp"
 
-// go.uber.org parser
-
 type goUberOrgParser struct {
 	parserBase
 }

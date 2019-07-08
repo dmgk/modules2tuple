@@ -9,8 +9,7 @@ import (
 )
 
 type Commit struct {
-	ID      string `json:"id"`
-	ShortID string `json:"short_id"`
+	ID string `json:"id"`
 }
 
 func GetCommit(account, project, commit string) (*Commit, error) {

@@ -3,13 +3,13 @@ package vanity
 import "regexp"
 
 type Parser interface {
-	Name() string
+	Name() string // for testing
 	Match(pkg string) bool
 	Parse(pkg string) (string, string)
 }
 
 type parserBase struct {
-	name string // for failure reporting in tests
+	name string
 	rx   *regexp.Regexp
 }
 

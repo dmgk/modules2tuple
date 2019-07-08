@@ -2,8 +2,6 @@ package vanity
 
 import "regexp"
 
-// golang.org parser
-
 type golangOrgParser struct {
 	parserBase
 }

@@ -1,4 +1,4 @@
-package main
+package tuple
 
 import "testing"
 
@@ -32,15 +32,15 @@ func TestParseName(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := parseTuple(x[0])
+		tuple, err := New(x[0], "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if tuple.account != x[1] {
-			t.Errorf("(%d) expected account to be %q, got %q", i, x[1], tuple.account)
+		if tuple.Account != x[1] {
+			t.Errorf("(%d) expected account to be %q, got %q", i, x[1], tuple.Account)
 		}
-		if tuple.project != x[2] {
-			t.Errorf("(%d) expected project to be %q, got %q", i, x[2], tuple.project)
+		if tuple.Project != x[2] {
+			t.Errorf("(%d) expected project to be %q, got %q", i, x[2], tuple.Project)
 		}
 	}
 }
@@ -56,12 +56,12 @@ func TestParseVersion(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := parseTuple(x[0])
+		tuple, err := New(x[0], "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if tuple.tag != x[1] {
-			t.Errorf("(%d) expected tag to be %q, got %q", i, x[1], tuple.tag)
+		if tuple.Tag != x[1] {
+			t.Errorf("(%d) expected tag to be %q, got %q", i, x[1], tuple.Tag)
 		}
 	}
 }
@@ -77,12 +77,12 @@ func TestParseTag(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := parseTuple(x[0])
+		tuple, err := New(x[0], "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if tuple.tag != x[1] {
-			t.Errorf("(%d) expected tag to be %q, got %q", i, x[1], tuple.tag)
+		if tuple.Tag != x[1] {
+			t.Errorf("(%d) expected tag to be %q, got %q", i, x[1], tuple.Tag)
 		}
 	}
 }
@@ -98,7 +98,7 @@ func TestStringer(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := parseTuple(x[0])
+		tuple, err := New(x[0], "vendor")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -112,11 +112,11 @@ func TestStringer(t *testing.T) {
 func TestPackageRename(t *testing.T) {
 	examples := [][]string{
 		// spec, expected renamed package String()
-		{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/vendor/github.com/spf13/cobra"},
+		{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/src/github.com/spf13/cobra"},
 	}
 
 	for i, x := range examples {
-		tuple, err := parseTuple(x[0])
+		tuple, err := New(x[0], "src")
 		if err != nil {
 			t.Fatal(err)
 		}

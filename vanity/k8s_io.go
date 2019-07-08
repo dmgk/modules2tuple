@@ -2,8 +2,6 @@ package vanity
 
 import "regexp"
 
-// k8s.io parser
-
 type k8sIoParser struct {
 	parserBase
 }
