@@ -30,6 +30,9 @@ func TestParseName(t *testing.T) {
 		// go.uber.org
 		{"go.uber.org/zap v1.10.0", "uber-go", "zap"},
 
+		// gocloud.dev
+		{"gocloud.dev v0.16.0", "google", "go-cloud"},
+
 		// Other known mirrors
 		{"google.golang.org/api v1.0.0", "googleapis", "google-api-go-client"},
 	}
