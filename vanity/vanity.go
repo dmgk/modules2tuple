@@ -22,8 +22,9 @@ func (p parserBase) Match(pkg string) bool {
 }
 
 var Parsers = []Parser{
-	newGopkgInParser(),
-	newGolangOrgParser(),
-	newK8sIoParser(),
+	newGoMozillaOrgParser(),
 	newGoUberOrgParser(),
+	newGolangOrgParser(),
+	newGopkgInParser(),
+	newK8sIoParser(),
 }

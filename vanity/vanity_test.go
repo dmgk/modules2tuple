@@ -52,3 +52,11 @@ func TestParseGoUberOrgName(t *testing.T) {
 	}
 	testExamples(t, newGoUberOrgParser(), examples)
 }
+
+func TestParseGoMozillaOrgName(t *testing.T) {
+	examples := [][]string{
+		// name, expected account, expected project
+		{"go.mozilla.org/gopgagent", "mozilla-services", "gopgagent"},
+	}
+	testExamples(t, newGoMozillaOrgParser(), examples)
+}
