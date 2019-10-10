@@ -136,8 +136,10 @@ func TestPackageRename(t *testing.T) {
 func TestReader(t *testing.T) {
 	given := `
 # github.com/karrick/godirwalk v1.10.12
+## explicit
 github.com/karrick/godirwalk
 # github.com/rogpeppe/go-internal v1.3.0
+## explicit
 github.com/rogpeppe/go-internal/modfile
 github.com/rogpeppe/go-internal/module
 github.com/rogpeppe/go-internal/semver
@@ -153,12 +155,16 @@ github.com/cockroachdb/cockroach-go/crdb
 gitlab.com/gitlab-org/labkit/correlation
 # gitlab.com/gitlab-org/gitaly-proto v1.32.0
 gitlab.com/gitlab-org/gitaly-proto/go/gitalypb
+# github.com/golang/lint v0.0.0-20190409202823-959b441ac422 => golang.org/x/lint v0.0.0-20190409202823-959b441ac422
+# github.com/ugorji/go v1.1.4 => github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 `
 
 	expected := `GH_TUPLE=	\
 		cockroachdb:cockroach-go:e0a95dfd547c:cockroachdb_cockroach_go/vendor/github.com/cockroachdb/cockroach-go \
+		golang:lint:959b441ac422:golang_lint/vendor/github.com/golang/lint \
 		karrick:godirwalk:v1.10.12:karrick_godirwalk/vendor/github.com/karrick/godirwalk \
 		rogpeppe:go-internal:v1.3.0:rogpeppe_go_internal/vendor/github.com/rogpeppe/go-internal \
+		ugorji:go:e444a5086c43:ugorji_go/vendor/github.com/ugorji/go \
 		user:pkg:v3.0.0:user_pkg/vendor/gopkg.in/user/pkg.v3
 		#::v1.0.0:_/vendor/another.vanity_url.org/account/project
 		#::v1.2.3:_/vendor/some_unknown.vanity_url.net/account/project
