@@ -115,20 +115,39 @@ func TestStringer(t *testing.T) {
 	}
 }
 
-func TestPackageRename(t *testing.T) {
+func TestPackageReplace(t *testing.T) {
 	examples := [][]string{
-		// spec, expected renamed package String()
-		{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/src/github.com/spf13/cobra"},
+		// spec, expected replaced package String()
+		{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/vendor/github.com/spf13/cobra"},
+		{"github.com/spf13/cobra => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/vendor/github.com/spf13/cobra"},
 	}
 
 	for i, x := range examples {
-		tuple, err := New(x[0], "src")
+		tuple, err := New(x[0], "vendor")
 		if err != nil {
 			t.Fatal(err)
 		}
 		s := tuple.String()
 		if s != x[1] {
-			t.Errorf("(%d) expected renamed package String() to return %q, got %q", i, x[1], s)
+			t.Errorf("(%d) expected replaced package String() to return %q, got %q", i, x[1], s)
+		}
+	}
+}
+
+func TestPackageReplaceNoVersion(t *testing.T) {
+	examples := [][]string{
+		// spec, expected error
+		{"github.com/hashicorp/consul/api => ./api", "github.com/hashicorp/consul/api => ./api"},
+	}
+
+	for i, x := range examples {
+		_, err := New(x[0], "vendor")
+		if err == nil {
+			t.Fatal("expected err to not be nil")
+		}
+		e := err.Error()
+		if e != x[1] {
+			t.Errorf("(%d) expected err to be %q, got %q", i, x[1], e)
 		}
 	}
 }
@@ -166,11 +185,39 @@ gitlab.com/gitlab-org/gitaly-proto/go/gitalypb
 		rogpeppe:go-internal:v1.3.0:rogpeppe_go_internal/vendor/github.com/rogpeppe/go-internal \
 		ugorji:go:e444a5086c43:ugorji_go/vendor/github.com/ugorji/go \
 		user:pkg:v3.0.0:user_pkg/vendor/gopkg.in/user/pkg.v3
-		#::v1.0.0:_/vendor/another.vanity_url.org/account/project
-		#::v1.2.3:_/vendor/some_unknown.vanity_url.net/account/project
 GL_TUPLE=	\
 		gitlab-org:gitaly-proto:v1.32.0:gitlab_org_gitaly_proto/vendor/gitlab.com/gitlab-org/gitaly-proto \
 		gitlab-org:labkit:0c3fc7cdd57c:gitlab_org_labkit/vendor/gitlab.com/gitlab-org/labkit
+		# Mirrors for the following packages are not currently known, please look them up and handle these tuples manually:
+		#	::v1.0.0:/vendor/another.vanity_url.org/account/project
+		#	::v1.2.3:/vendor/some_unknown.vanity_url.net/account/project
+`
+
+	tt, err := NewParser("vendor", true).Read(strings.NewReader(given))
+	if err == nil {
+		t.Fatal("expected err to not be nil")
+	}
+	out := tt.String() + err.Error()
+	if out != expected {
+		t.Errorf("expected output\n%s, got\n%s", expected, out)
+	}
+}
+
+func TestUniqueGroups(t *testing.T) {
+	given := `
+# github.com/minio/lsync v1.0.1
+# github.com/minio/mc v0.0.0-20190924013003-643835013047
+# github.com/minio/minio-go v0.0.0-20190327203652-5325257a208f
+# github.com/minio/minio-go/v6 v6.0.39
+# github.com/minio/parquet-go v0.0.0-20190318185229-9d767baf1679
+`
+
+	expected := `GH_TUPLE=	\
+		minio:lsync:v1.0.1:minio_lsync/vendor/github.com/minio/lsync \
+		minio:mc:643835013047:minio_mc/vendor/github.com/minio/mc \
+		minio:minio-go:5325257a208f:minio_minio_go/vendor/github.com/minio/minio-go \
+		minio:minio-go:v6.0.39:minio_minio_go_1/vendor/github.com/minio/minio-go/v6 \
+		minio:parquet-go:9d767baf1679:minio_parquet_go/vendor/github.com/minio/parquet-go
 `
 
 	tt, err := NewParser("vendor", true).Read(strings.NewReader(given))

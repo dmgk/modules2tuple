@@ -26,13 +26,11 @@ func main() {
 	}
 
 	parser := tuple.NewParser(flagPackagePrefix, flagOffline)
-	tuples, err := parser.Load(args[0])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
+	tuples, errors := parser.Load(args[0])
 	fmt.Println(tuples)
+	if errors != nil {
+		fmt.Println(errors)
+	}
 }
 
 var helpTemplate = template.Must(template.New("help").Parse(`

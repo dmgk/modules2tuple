@@ -16,38 +16,65 @@ import (
 	"github.com/dmgk/modules2tuple/vanity"
 )
 
-type Kind int
+type Source int
 
 const (
-	KindGithub = iota
-	KindGitlab
+	SourceUnknown = iota
+	SourceGithub
+	SourceGitlab
 )
 
 type Tuple struct {
-	Kind    Kind   // tuple kind
+	Source  Source // tuple source
 	Package string // Go package name
 	Account string // account
 	Project string // project
 	Tag     string // tag or commit ID
+	Group   string // GH_TUPLE group
 	Prefix  string // package prefix
 }
 
-const comment = "#"
-
 var groupRe = regexp.MustCompile(`[^\w]+`)
 
-func (t *Tuple) String() string {
-	group := t.Account + "_" + t.Project
+func (t *Tuple) SetSource(source Source, account, project string) {
+	t.Source = source
+	t.Account = account
+	t.Project = project
+	group := account + "_" + project
 	group = groupRe.ReplaceAllString(group, "_")
-	group = strings.ToLower(group)
-	var bol string
-	if t.Account == "" || t.Project == "" {
-		bol = comment
-	}
-	return fmt.Sprintf("%s%s:%s:%s:%s/%s/%s", bol, t.Account, t.Project, t.Tag, group, t.Prefix, t.Package)
+	t.Group = strings.ToLower(group)
+}
+
+func (t *Tuple) String() string {
+	return fmt.Sprintf("%s:%s:%s:%s/%s/%s", t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Package)
 }
 
 type Tuples []*Tuple
+
+// EnsureUniqueGroups makes sure all Group names are unique.
+// This function assumes that tt is pre-sorted in ByAccountAndProject order.
+func (tt Tuples) EnsureUniqueGroups() {
+	if len(tt) < 2 {
+		return
+	}
+
+	var prevGroup string
+	suffix := 1
+
+	for i, t := range tt {
+		if i == 0 {
+			prevGroup = t.Group
+			continue
+		}
+		if t.Group == prevGroup {
+			t.Group = fmt.Sprintf("%s_%d", t.Group, suffix)
+			suffix++
+		} else {
+			prevGroup = t.Group
+			suffix = 1
+		}
+	}
+}
 
 type ByAccountAndProject Tuples
 
@@ -62,41 +89,41 @@ func (tt ByAccountAndProject) Swap(i, j int) {
 func (tt ByAccountAndProject) Less(i, j int) bool {
 	// Commented lines sorted last
 	si, sj := tt[i].String(), tt[j].String()
-	if strings.HasPrefix(si, comment) {
-		if strings.HasPrefix(sj, comment) {
+	if strings.HasPrefix(si, "#") {
+		if strings.HasPrefix(sj, "#") {
 			return tt[i].Package < tt[j].Package
 		}
 		return false
 	}
-	if strings.HasPrefix(sj, comment) {
+	if strings.HasPrefix(sj, "#") {
 		return true
 	}
 	return tt[i].String() < tt[j].String()
 }
 
-var varName = map[Kind]string{
-	KindGithub: "GH_TUPLE",
-	KindGitlab: "GL_TUPLE",
+var varName = map[Source]string{
+	SourceGithub: "GH_TUPLE",
+	SourceGitlab: "GL_TUPLE",
 }
 
 func (tt Tuples) String() string {
-	bufs := map[Kind]*bytes.Buffer{
-		KindGithub: new(bytes.Buffer),
-		KindGitlab: new(bytes.Buffer),
+	bufs := map[Source]*bytes.Buffer{
+		SourceGithub: new(bytes.Buffer),
+		SourceGitlab: new(bytes.Buffer),
 	}
 
 	for _, t := range tt {
-		b, ok := bufs[t.Kind]
+		b, ok := bufs[t.Source]
 		if !ok {
-			panic(fmt.Sprintf("unknown tuple kind: %v", t.Kind))
+			panic(fmt.Sprintf("unknown tuple source: %v", t.Source))
 		}
 		var eol string
 		if b.Len() == 0 {
-			b.WriteString(fmt.Sprintf("%s=\t", varName[t.Kind]))
+			b.WriteString(fmt.Sprintf("%s=\t", varName[t.Source]))
 			eol = `\`
 		}
 		s := t.String()
-		if strings.HasPrefix(s, comment) {
+		if strings.HasPrefix(s, "#") {
 			eol = ""
 		} else if eol == "" {
 			eol = ` \`
@@ -105,7 +132,7 @@ func (tt Tuples) String() string {
 	}
 
 	var sb strings.Builder
-	for _, k := range []Kind{KindGithub, KindGitlab} {
+	for _, k := range []Source{SourceGithub, SourceGitlab} {
 		b := bufs[k].Bytes()
 		if len(b) > 0 {
 			sb.Write(bufs[k].Bytes())
@@ -114,6 +141,53 @@ func (tt Tuples) String() string {
 	}
 
 	return sb.String()
+}
+
+type Errors struct {
+	SourceErrors      []SourceError
+	ReplacementErrors []ReplacementError
+}
+
+func (ee Errors) IsEmpty() bool {
+	return len(ee.SourceErrors) == 0 && len(ee.ReplacementErrors) == 0
+}
+
+func (ee Errors) Error() string {
+	var buf bytes.Buffer
+
+	if len(ee.SourceErrors) > 0 {
+		buf.WriteString("\t\t# Mirrors for the following packages are not currently known, please look them up and handle these tuples manually:\n")
+		sort.Slice(ee.SourceErrors, func(i, j int) bool {
+			return ee.SourceErrors[i] < ee.SourceErrors[j]
+		})
+		for _, err := range ee.SourceErrors {
+			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
+		}
+	}
+
+	if len(ee.ReplacementErrors) > 0 {
+		buf.WriteString("\t\t# The following replacement packages are missing version/commit ID, you may need to symlink them in post-patch:\n")
+		sort.Slice(ee.ReplacementErrors, func(i, j int) bool {
+			return ee.ReplacementErrors[i] < ee.ReplacementErrors[j]
+		})
+		for _, err := range ee.ReplacementErrors {
+			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
+		}
+	}
+
+	return buf.String()
+}
+
+type ReplacementError string
+
+func (err ReplacementError) Error() string {
+	return string(err)
+}
+
+type SourceError string
+
+func (err SourceError) Error() string {
+	return string(err)
 }
 
 // v1.0.0
@@ -133,21 +207,37 @@ func New(spec, packagePrefix string) (*Tuple, error) {
 
 	// Replaced package spec
 	if strings.Contains(spec, replaceOp) {
-		parts := strings.Split(spec, replaceOp)
-		if len(parts) != 2 {
+		replace := strings.Split(spec, replaceOp)
+		if len(replace) != 2 {
 			return nil, fmt.Errorf("unexpected number of packages in replace spec: %q", spec)
 		}
-		tOld, err := New(parts[0], packagePrefix)
-		if err != nil {
-			return nil, err
+
+		var srcPkg string
+		srcParts := strings.Fields(replace[0])
+		switch len(srcParts) {
+		case 1, 2:
+			srcPkg = srcParts[0]
+		default:
+			return nil, fmt.Errorf("unexpected number of fields in the replace spec source: %q", spec)
 		}
-		t, err := New(parts[1], packagePrefix)
+
+		tgtParts := strings.Fields(replace[1])
+		switch len(tgtParts) {
+		case 1:
+			return nil, ReplacementError(spec)
+		case 2:
+			// OK
+		default:
+			return nil, fmt.Errorf("unexpected number of fields in the replace spec target: %q", spec)
+		}
+
+		t, err := New(replace[1], packagePrefix)
 		if err != nil {
 			return nil, err
 		}
 
-		// Keep the old package name but with new account, project and tag
-		t.Package = tOld.Package
+		// Keep the target package's account, project and tag but source package name
+		t.Package = srcPkg
 
 		return t, nil
 	}
@@ -164,8 +254,7 @@ func New(spec, packagePrefix string) (*Tuple, error) {
 
 	// Parse package name
 	if m, ok := mirrors[pkg]; ok {
-		t.Account = m.Account
-		t.Project = m.Project
+		t.SetSource(SourceGithub, m.Account, m.Project)
 	} else {
 		switch {
 		case strings.HasPrefix(pkg, "github.com"):
@@ -173,20 +262,18 @@ func New(spec, packagePrefix string) (*Tuple, error) {
 			if len(parts) < 3 {
 				return nil, fmt.Errorf("unexpected Github package name: %q", pkg)
 			}
-			t.Account = parts[1]
-			t.Project = parts[2]
+			t.SetSource(SourceGithub, parts[1], parts[2])
 		case strings.HasPrefix(pkg, "gitlab.com"):
 			nameParts := strings.Split(pkg, "/")
 			if len(nameParts) < 3 {
 				return nil, fmt.Errorf("unexpected Gitlab package name: %q", pkg)
 			}
-			t.Kind = KindGitlab
-			t.Account = nameParts[1]
-			t.Project = nameParts[2]
+			t.SetSource(SourceGitlab, nameParts[1], nameParts[2])
 		default:
 			for _, vp := range vanity.Parsers {
 				if vp.Match(pkg) {
-					t.Account, t.Project = vp.Parse(pkg)
+					account, project := vp.Parse(pkg)
+					t.SetSource(SourceGithub, account, project)
 					break
 				}
 			}
@@ -203,6 +290,10 @@ func New(spec, packagePrefix string) (*Tuple, error) {
 		t.Tag = sm[0][1]
 	default:
 		return nil, fmt.Errorf("unexpected version string: %q", version)
+	}
+
+	if t.Source == SourceUnknown {
+		return nil, SourceError(t.String())
 	}
 
 	return t, nil
@@ -247,7 +338,7 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 					}
 					// Call Gitlab API to translate go.mod short commit IDs and tags
 					// to the full 40-character commit IDs as required by bsd.sites.mk
-					if !p.offline && t.Kind == KindGitlab {
+					if !p.offline && t.Source == SourceGitlab {
 						c, err := gitlab.GetCommit(t.Account, t.Project, t.Tag)
 						if err != nil {
 							ch <- err
@@ -262,16 +353,31 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 		wg.Wait()
 	}()
 
-	var tt Tuples
+	var tuples Tuples
+	var errors Errors
+
 	for res := range ch {
 		if err, ok := res.(error); ok {
-			return nil, err
+			switch err := err.(type) {
+			case SourceError:
+				errors.SourceErrors = append(errors.SourceErrors, err)
+			case ReplacementError:
+				errors.ReplacementErrors = append(errors.ReplacementErrors, err)
+			default:
+				return nil, err
+			}
+		} else {
+			tuples = append(tuples, res.(*Tuple))
 		}
-		tt = append(tt, res.(*Tuple))
 	}
-	sort.Sort(ByAccountAndProject(tt))
+	sort.Sort(ByAccountAndProject(tuples))
+	tuples.EnsureUniqueGroups()
 
-	return tt, nil
+	if !errors.IsEmpty() {
+		return tuples, errors
+	}
+
+	return tuples, nil
 }
 
 // Load parses tuples from modules.txt found at path.
