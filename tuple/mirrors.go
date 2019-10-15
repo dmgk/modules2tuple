@@ -20,4 +20,5 @@ var mirrors = map[string]struct {
 	"gopkg.in/fsnotify.v1":                      {"fsnotify", "fsnotify"}, // fsnotify is a special case in gopkg.in
 	"sigs.k8s.io/yaml":                          {"kubernetes-sigs", "yaml"},
 	"go.mongodb.org/mongo-driver":               {"mongodb", "mongo-go-driver"},
+	"gotest.tools":                              {"gotestyourself", "gotest.tools"},
 }
