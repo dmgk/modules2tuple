@@ -1,8 +1,8 @@
 package tuple
 
 var mirrors = map[string]struct {
-	Account string // Github account
-	Project string // Github project
+	account string
+	project string
 }{
 	// Package name                              GH Account, GH Project
 	"camlistore.org":                            {"perkeep", "perkeep"},
@@ -21,4 +21,12 @@ var mirrors = map[string]struct {
 	"sigs.k8s.io/yaml":                          {"kubernetes-sigs", "yaml"},
 	"go.mongodb.org/mongo-driver":               {"mongodb", "mongo-go-driver"},
 	"gotest.tools":                              {"gotestyourself", "gotest.tools"},
+}
+
+func (t *Tuple) fromMirror() bool {
+	if m, ok := mirrors[t.Package]; ok {
+		t.setSource(SourceGithub, m.account, m.project)
+		return true
+	}
+	return false
 }

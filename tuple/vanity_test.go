@@ -1,18 +1,18 @@
-package vanity
+package tuple
 
 import "testing"
 
-func testExamples(t *testing.T, p Parser, examples [][]string) {
+func testExamples(t *testing.T, name string, fn vanityParser, examples [][]string) {
 	for i, x := range examples {
-		if !p.Match(x[0]) {
-			t.Fatalf("%s parser: expected %q to match", p.Name(), x[0])
+		tuple := &Tuple{Package: x[0]}
+		if !fn(tuple) {
+			t.Errorf("%s: expected %q to match", name, x[0])
 		}
-		account, project := p.Parse(x[0])
-		if account != x[1] {
-			t.Errorf("%s parser: expected account to be %q, got %q (example %d)", p.Name(), x[1], account, i)
+		if tuple.Account != x[1] {
+			t.Errorf("%s: expected account to be %q, got %q (example %d)", name, x[1], tuple.Account, i)
 		}
-		if project != x[2] {
-			t.Errorf("%s parser: expected project to be %q, got %q (example %d)", p.Name(), x[2], project, i)
+		if tuple.Project != x[2] {
+			t.Errorf("%s: expected project to be %q, got %q (example %d)", name, x[2], tuple.Project, i)
 		}
 	}
 }
@@ -25,7 +25,7 @@ func TestParseGopkgInName(t *testing.T) {
 		{"gopkg.in/pkg-with-dashes.v3", "go-pkg-with-dashes", "pkg-with-dashes"},
 		{"gopkg.in/UserCaps-With-Dashes/0andCrazyPkgName.v3-alpha", "UserCaps-With-Dashes", "0andCrazyPkgName"},
 	}
-	testExamples(t, newGopkgInParser(), examples)
+	testExamples(t, "gopkgInParser", gopkgInParser, examples)
 }
 
 func TestParseGolangOrgName(t *testing.T) {
@@ -34,7 +34,7 @@ func TestParseGolangOrgName(t *testing.T) {
 		{"golang.org/x/pkg", "golang", "pkg"},
 		{"golang.org/x/oauth2", "golang", "oauth2"},
 	}
-	testExamples(t, newGolangOrgParser(), examples)
+	testExamples(t, "golangOrgParser", golangOrgParser, examples)
 }
 
 func TestParseK8sIoName(t *testing.T) {
@@ -42,7 +42,7 @@ func TestParseK8sIoName(t *testing.T) {
 		// name, expected account, expected project
 		{"k8s.io/api", "kubernetes", "api"},
 	}
-	testExamples(t, newK8sIoParser(), examples)
+	testExamples(t, "k8sIoParser", k8sIoParser, examples)
 }
 
 func TestParseGoUberOrgName(t *testing.T) {
@@ -50,7 +50,7 @@ func TestParseGoUberOrgName(t *testing.T) {
 		// name, expected account, expected project
 		{"go.uber.org/zap", "uber-go", "zap"},
 	}
-	testExamples(t, newGoUberOrgParser(), examples)
+	testExamples(t, "goUberOrgParser", goUberOrgParser, examples)
 }
 
 func TestParseGoMozillaOrgName(t *testing.T) {
@@ -58,5 +58,5 @@ func TestParseGoMozillaOrgName(t *testing.T) {
 		// name, expected account, expected project
 		{"go.mozilla.org/gopgagent", "mozilla-services", "gopgagent"},
 	}
-	testExamples(t, newGoMozillaOrgParser(), examples)
+	testExamples(t, "goMozillaOrgParser", goMozillaOrgParser, examples)
 }

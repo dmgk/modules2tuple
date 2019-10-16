@@ -38,7 +38,7 @@ func TestParseName(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := New(x[0], "")
+		tuple, err := Parse(x[0], "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -62,7 +62,7 @@ func TestParseVersion(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := New(x[0], "")
+		tuple, err := Parse(x[0], "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +83,7 @@ func TestParseTag(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := New(x[0], "")
+		tuple, err := Parse(x[0], "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,7 +104,7 @@ func TestStringer(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := New(x[0], "vendor")
+		tuple, err := Parse(x[0], "vendor")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -123,7 +123,7 @@ func TestPackageReplace(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tuple, err := New(x[0], "vendor")
+		tuple, err := Parse(x[0], "vendor")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestPackageReplaceNoVersion(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		_, err := New(x[0], "vendor")
+		_, err := Parse(x[0], "vendor")
 		if err == nil {
 			t.Fatal("expected err to not be nil")
 		}
