@@ -12,9 +12,9 @@ type Commit struct {
 	ID string `json:"id"`
 }
 
-func GetCommit(account, project, commit string) (*Commit, error) {
+func GetCommit(site, account, project, commit string) (*Commit, error) {
 	projectID := url.PathEscape(fmt.Sprintf("%s/%s", account, project))
-	url := fmt.Sprintf("https://gitlab.com/api/v4/projects/%s/repository/commits/%s", projectID, commit)
+	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", site, projectID, commit)
 
 	resp, err := get(url)
 	if err != nil {
