@@ -11,6 +11,7 @@ var mirrors = map[string]struct {
 	"docker.io/go-docker":                       {"docker", "go-docker"},
 	"git.apache.org/thrift.git":                 {"apache", "thrift"},
 	"go.opencensus.io":                          {"census-instrumentation", "opencensus-go"},
+	"go.elastic.co/apm":                         {"elastic", "apm-agent-go"},
 	"go4.org":                                   {"go4org", "go4"},
 	"gocloud.dev":                               {"google", "go-cloud"},
 	"google.golang.org/api":                     {"googleapis", "google-api-go-client"},
