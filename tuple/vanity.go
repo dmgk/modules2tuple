@@ -32,7 +32,7 @@ func goMozillaOrgParser(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.setSource(SourceGithub, "mozilla-services", sm[0][1])
+	t.setSource(GH{}, "mozilla-services", sm[0][1])
 	return true
 }
 
@@ -47,7 +47,7 @@ func goUberOrgParser(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.setSource(SourceGithub, "uber-go", sm[0][1])
+	t.setSource(GH{}, "uber-go", sm[0][1])
 	return true
 }
 
@@ -62,7 +62,7 @@ func golangOrgParser(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.setSource(SourceGithub, "golang", sm[0][1])
+	t.setSource(GH{}, "golang", sm[0][1])
 	return true
 }
 
@@ -79,9 +79,9 @@ func gopkgInParser(t *Tuple) bool {
 		return false
 	}
 	if sm[0][2] == "" {
-		t.setSource(SourceGithub, "go-"+sm[0][1], sm[0][1])
+		t.setSource(GH{}, "go-"+sm[0][1], sm[0][1])
 	} else {
-		t.setSource(SourceGithub, sm[0][1], sm[0][2])
+		t.setSource(GH{}, sm[0][1], sm[0][2])
 	}
 	return true
 }
@@ -97,6 +97,6 @@ func k8sIoParser(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.setSource(SourceGithub, "kubernetes", sm[0][1])
+	t.setSource(GH{}, "kubernetes", sm[0][1])
 	return true
 }

@@ -27,7 +27,9 @@ func main() {
 
 	parser := tuple.NewParser(flagPackagePrefix, flagOffline)
 	tuples, errors := parser.Load(args[0])
-	fmt.Println(tuples)
+	if len(tuples) != 0 {
+		fmt.Println(tuples)
+	}
 	if errors != nil {
 		fmt.Println(errors)
 	}

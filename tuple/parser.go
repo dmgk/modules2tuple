@@ -49,15 +49,17 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 						ch <- err
 						return
 					}
-					// Call Gitlab API to translate go.mod short commit IDs and tags
-					// to the full 40-character commit IDs as required by bsd.sites.mk
-					if !p.offline && t.Source == SourceGitlab {
-						c, err := gitlab.GetCommit(t.Account, t.Project, t.Tag)
-						if err != nil {
-							ch <- err
-							return
+					if !p.offline {
+						// Call Gitlab API to translate go.mod short commit IDs and tags
+						// to the full 40-character commit IDs as required by bsd.sites.mk
+						if _, ok := t.Source.(GL); ok {
+							c, err := gitlab.GetCommit(t.Source.Site(), t.Account, t.Project, t.Tag)
+							if err != nil {
+								ch <- err
+								return
+							}
+							t.Tag = c.ID
 						}
-						t.Tag = c.ID
 					}
 					ch <- t
 				}()
@@ -73,9 +75,11 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 		if err, ok := res.(error); ok {
 			switch err := err.(type) {
 			case SourceError:
-				errors.SourceErrors = append(errors.SourceErrors, err)
-			case ReplacementError:
-				errors.ReplacementErrors = append(errors.ReplacementErrors, err)
+				errors.Source = append(errors.Source, err)
+			case ReplacementMissingCommitError:
+				errors.ReplacementMissingCommit = append(errors.ReplacementMissingCommit, err)
+			case ReplacementLocalFilesystemError:
+				errors.ReplacementLocalFilesystem = append(errors.ReplacementLocalFilesystem, err)
 			default:
 				return nil, err
 			}

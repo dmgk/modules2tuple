@@ -3,17 +3,10 @@ package tuple
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
-)
-
-type Source int
-
-const (
-	SourceUnknown = iota
-	SourceGithub
-	SourceGitlab
 )
 
 type Tuple struct {
@@ -27,6 +20,9 @@ type Tuple struct {
 }
 
 func (t *Tuple) String() string {
+	if t.Source != nil && !t.Source.IsDefaultSite() {
+		return fmt.Sprintf("%s:%s:%s:%s:%s/%s/%s", t.Source.Site(), t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Package)
+	}
 	return fmt.Sprintf("%s:%s:%s:%s/%s/%s", t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Package)
 }
 
@@ -71,25 +67,28 @@ func (tt ByAccountAndProject) Less(i, j int) bool {
 	return tt[i].String() < tt[j].String()
 }
 
-var varName = map[Source]string{
-	SourceGithub: "GH_TUPLE",
-	SourceGitlab: "GL_TUPLE",
-}
-
 func (tt Tuples) String() string {
-	bufs := map[Source]*bytes.Buffer{
-		SourceGithub: new(bytes.Buffer),
-		SourceGitlab: new(bytes.Buffer),
+	if len(tt) == 0 {
+		return ""
 	}
 
+	bufs := make(map[reflect.Type]*bytes.Buffer)
+
 	for _, t := range tt {
-		b, ok := bufs[t.Source]
-		if !ok {
-			panic(fmt.Sprintf("unknown tuple source: %v", t.Source))
+		st := reflect.TypeOf(t.Source)
+		if st == nil {
+			panic(fmt.Sprintf("unknown source in tuple: %v", t))
 		}
+
+		buf, ok := bufs[st]
+		if !ok {
+			buf = &bytes.Buffer{}
+			bufs[st] = buf
+		}
+
 		var eol string
-		if b.Len() == 0 {
-			b.WriteString(fmt.Sprintf("%s=\t", varName[t.Source]))
+		if buf.Len() == 0 {
+			buf.WriteString(fmt.Sprintf("%s=\t", t.Source.VarName()))
 			eol = `\`
 		}
 		s := t.String()
@@ -98,49 +97,62 @@ func (tt Tuples) String() string {
 		} else if eol == "" {
 			eol = ` \`
 		}
-		b.WriteString(fmt.Sprintf("%s\n\t\t%s", eol, s))
+		buf.WriteString(fmt.Sprintf("%s\n\t\t%s", eol, s))
 	}
 
-	var sb strings.Builder
-	for _, k := range []Source{SourceGithub, SourceGitlab} {
-		b := bufs[k].Bytes()
-		if len(b) > 0 {
-			sb.Write(bufs[k].Bytes())
-			sb.WriteRune('\n')
+	var ss []string
+	for _, buf := range bufs {
+		s := buf.String()
+		if len(s) > 0 {
+			ss = append(ss, s)
 		}
 	}
+	sort.Sort(sort.StringSlice(ss))
 
-	return sb.String()
+	return fmt.Sprintf("%s\n", strings.Join(ss, "\n\n"))
 }
 
 type Errors struct {
-	SourceErrors      []SourceError
-	ReplacementErrors []ReplacementError
+	Source                     []SourceError
+	ReplacementLocalFilesystem []ReplacementLocalFilesystemError
+	ReplacementMissingCommit   []ReplacementMissingCommitError
 }
 
 func (ee Errors) Any() bool {
-	return len(ee.SourceErrors) > 0 || len(ee.ReplacementErrors) > 0
+	return len(ee.Source) > 0 ||
+		len(ee.ReplacementLocalFilesystem) > 0 ||
+		len(ee.ReplacementMissingCommit) > 0
 }
 
 func (ee Errors) Error() string {
 	var buf bytes.Buffer
 
-	if len(ee.SourceErrors) > 0 {
+	if len(ee.Source) > 0 {
 		buf.WriteString("\t\t# Mirrors for the following packages are not currently known, please look them up and handle these tuples manually:\n")
-		sort.Slice(ee.SourceErrors, func(i, j int) bool {
-			return ee.SourceErrors[i] < ee.SourceErrors[j]
+		sort.Slice(ee.Source, func(i, j int) bool {
+			return ee.Source[i] < ee.Source[j]
 		})
-		for _, err := range ee.SourceErrors {
+		for _, err := range ee.Source {
 			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
 		}
 	}
 
-	if len(ee.ReplacementErrors) > 0 {
+	if len(ee.ReplacementMissingCommit) > 0 {
 		buf.WriteString("\t\t# The following replacement packages are missing version/commit ID, you may need to symlink them in post-patch:\n")
-		sort.Slice(ee.ReplacementErrors, func(i, j int) bool {
-			return ee.ReplacementErrors[i] < ee.ReplacementErrors[j]
+		sort.Slice(ee.ReplacementMissingCommit, func(i, j int) bool {
+			return ee.ReplacementMissingCommit[i] < ee.ReplacementMissingCommit[j]
 		})
-		for _, err := range ee.ReplacementErrors {
+		for _, err := range ee.ReplacementMissingCommit {
+			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
+		}
+	}
+
+	if len(ee.ReplacementLocalFilesystem) > 0 {
+		buf.WriteString("\t\t# The following replacement packages are referencing a local filesystem path, you may need to symlink them in post-patch:\n")
+		sort.Slice(ee.ReplacementLocalFilesystem, func(i, j int) bool {
+			return ee.ReplacementLocalFilesystem[i] < ee.ReplacementLocalFilesystem[j]
+		})
+		for _, err := range ee.ReplacementLocalFilesystem {
 			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
 		}
 	}
@@ -148,9 +160,15 @@ func (ee Errors) Error() string {
 	return buf.String()
 }
 
-type ReplacementError string
+type ReplacementLocalFilesystemError string
 
-func (err ReplacementError) Error() string {
+func (err ReplacementLocalFilesystemError) Error() string {
+	return string(err)
+}
+
+type ReplacementMissingCommitError string
+
+func (err ReplacementMissingCommitError) Error() string {
 	return string(err)
 }
 
@@ -194,8 +212,12 @@ func Parse(spec, packagePrefix string) (*Tuple, error) {
 		targetParts := strings.Fields(replaceSpecs[1])
 		switch len(targetParts) {
 		case 1:
+			if targetParts[0][0] == '.' || targetParts[0][0] == '/' {
+				// Target package spec is local filesystem path
+				return nil, ReplacementLocalFilesystemError(spec)
+			}
 			// Target package spec is missing commit ID/tag
-			return nil, ReplacementError(spec)
+			return nil, ReplacementMissingCommitError(spec)
 		case 2:
 			// OK
 		default:
@@ -249,7 +271,7 @@ func Parse(spec, packagePrefix string) (*Tuple, error) {
 		return nil, fmt.Errorf("unexpected version string: %q", version)
 	}
 
-	if tuple.Source == SourceUnknown {
+	if tuple.Source == nil {
 		return nil, SourceError(tuple.String())
 	}
 
@@ -272,7 +294,7 @@ func (t *Tuple) fromGithub() error {
 	if len(parts) < 3 {
 		return fmt.Errorf("unexpected Github package name: %q", t.Package)
 	}
-	t.setSource(SourceGithub, parts[1], parts[2])
+	t.setSource(GH{}, parts[1], parts[2])
 	return nil
 }
 
@@ -281,6 +303,6 @@ func (t *Tuple) fromGitlab() error {
 	if len(parts) < 3 {
 		return fmt.Errorf("unexpected Gitlab package name: %q", t.Package)
 	}
-	t.setSource(SourceGitlab, parts[1], parts[2])
+	t.setSource(GL{}, parts[1], parts[2])
 	return nil
 }

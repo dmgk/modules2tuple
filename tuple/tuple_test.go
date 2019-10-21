@@ -185,6 +185,7 @@ gitlab.com/gitlab-org/gitaly-proto/go/gitalypb
 		rogpeppe:go-internal:v1.3.0:rogpeppe_go_internal/vendor/github.com/rogpeppe/go-internal \
 		ugorji:go:e444a5086c43:ugorji_go/vendor/github.com/ugorji/go \
 		user:pkg:v3.0.0:user_pkg/vendor/gopkg.in/user/pkg.v3
+
 GL_TUPLE=	\
 		gitlab-org:gitaly-proto:v1.32.0:gitlab_org_gitaly_proto/vendor/gitlab.com/gitlab-org/gitaly-proto \
 		gitlab-org:labkit:0c3fc7cdd57c:gitlab_org_labkit/vendor/gitlab.com/gitlab-org/labkit
