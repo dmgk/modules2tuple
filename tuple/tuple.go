@@ -190,119 +190,157 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 // v0.8.0-dev.2.0.20180608203834-19279f049241
 var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:[0-9A-Za-z\.]+\.)?\d{14}-([0-9a-f]+)\z`)
 
+// Parse parses a package spec into Tuple.
 func Parse(spec, packagePrefix string) (*Tuple, error) {
+	t, err := parseReplaceSpec(spec, packagePrefix)
+	if err != nil {
+		return nil, err
+	}
+	if t != nil {
+		// Tuple was parsed from a replace spec
+		return t, nil
+	}
+	return parseSpec(spec, packagePrefix)
+}
+
+func parseReplaceSpec(spec, packagePrefix string) (*Tuple, error) {
 	const replaceOp = " => "
 
-	// Replaced package spec
-	if strings.Contains(spec, replaceOp) {
-		replaceSpecs := strings.Split(spec, replaceOp)
-		if len(replaceSpecs) != 2 {
-			return nil, fmt.Errorf("unexpected number of packages in replace spec: %q", spec)
-		}
-
-		var sourcePkg string
-		sourceParts := strings.Fields(replaceSpecs[0])
-		switch len(sourceParts) {
-		case 1, 2:
-			sourcePkg = sourceParts[0]
-		default:
-			return nil, fmt.Errorf("unexpected number of fields in the replace spec source: %q", spec)
-		}
-
-		targetParts := strings.Fields(replaceSpecs[1])
-		switch len(targetParts) {
-		case 1:
-			if targetParts[0][0] == '.' || targetParts[0][0] == '/' {
-				// Target package spec is local filesystem path
-				return nil, ReplacementLocalFilesystemError(spec)
-			}
-			// Target package spec is missing commit ID/tag
-			return nil, ReplacementMissingCommitError(spec)
-		case 2:
-			// OK
-		default:
-			return nil, fmt.Errorf("unexpected number of fields in the replace spec target: %q", spec)
-		}
-
-		tuple, err := Parse(replaceSpecs[1], packagePrefix)
-		if err != nil {
-			return nil, err
-		}
-
-		// Keep the target package's account/project/tag but set the source package name
-		tuple.Package = sourcePkg
-
-		return tuple, nil
+	if !strings.Contains(spec, replaceOp) {
+		// Not a replace spec
+		return nil, nil
 	}
 
-	// Regular package spec
+	replaceSpecs := strings.Split(spec, replaceOp)
+	if len(replaceSpecs) != 2 {
+		return nil, fmt.Errorf("unexpected number of packages in replace spec: %q", spec)
+	}
+
+	var sourcePkg string
+
+	sourceFields := strings.Fields(replaceSpecs[0])
+	switch len(sourceFields) {
+	case 1, 2:
+		sourcePkg = sourceFields[0]
+	default:
+		return nil, fmt.Errorf("unexpected number of fields in the replace spec source: %q", spec)
+	}
+
+	targetFields := strings.Fields(replaceSpecs[1])
+	switch len(targetFields) {
+	case 1:
+		if targetFields[0][0] == '.' || targetFields[0][0] == '/' {
+			// Target package spec is a local filesystem path
+			return nil, ReplacementLocalFilesystemError(spec)
+		}
+		// Target package spec is missing commit ID/tag
+		return nil, ReplacementMissingCommitError(spec)
+	case 2:
+		// OK
+	default:
+		return nil, fmt.Errorf("unexpected number of fields in the replace spec target: %q", spec)
+	}
+
+	t, err := parseSpec(replaceSpecs[1], packagePrefix)
+	if err != nil {
+		return nil, err
+	}
+
+	// Keep the target package's account/project/tag but set the source package name
+	t.Package = sourcePkg
+
+	return t, nil
+}
+
+func parseSpec(spec, packagePrefix string) (*Tuple, error) {
 	fields := strings.Fields(spec)
 	if len(fields) != 2 {
 		return nil, fmt.Errorf("unexpected number of fields: %q", spec)
 	}
-
 	pkg := fields[0]
 	version := fields[1]
-	tuple := &Tuple{Package: pkg, Prefix: packagePrefix}
 
-	if !tuple.fromMirror() {
-		switch {
-		case strings.HasPrefix(pkg, "github.com"):
-			if err := tuple.fromGithub(); err != nil {
-				return nil, err
-			}
-		case strings.HasPrefix(pkg, "gitlab.com"):
-			if err := tuple.fromGitlab(); err != nil {
-				return nil, err
-			}
-		default:
-			tuple.fromVanity()
+	pkgParsers := []func(string, string) (*Tuple, error){
+		tryMirror,
+		tryGithub,
+		tryGitlab,
+		tryVanity,
+		noMatch,
+	}
+
+	var t *Tuple
+	for _, fn := range pkgParsers {
+		var err error
+		t, err = fn(pkg, packagePrefix)
+		if err != nil {
+			return nil, err
+		}
+		if t != nil {
+			break
 		}
 	}
 
 	switch {
 	case tagRx.MatchString(version):
 		sm := tagRx.FindAllStringSubmatch(version, -1)
-		tuple.Tag = sm[0][1]
+		t.Tag = sm[0][1]
 	case versionRx.MatchString(version):
 		sm := versionRx.FindAllStringSubmatch(version, -1)
-		tuple.Tag = sm[0][1]
+		t.Tag = sm[0][1]
 	default:
 		return nil, fmt.Errorf("unexpected version string: %q", version)
 	}
 
-	if tuple.Source == nil {
-		return nil, SourceError(tuple.String())
+	if t.Source == nil {
+		return nil, SourceError(t.String())
 	}
 
-	return tuple, nil
+	return t, nil
+}
+
+func tryGithub(pkg, packagePrefix string) (*Tuple, error) {
+	if !strings.HasPrefix(pkg, "github.com") {
+		return nil, nil
+	}
+	parts := strings.Split(pkg, "/")
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("unexpected Github package name: %q", pkg)
+	}
+	return newTuple(GH{}, pkg, parts[1], parts[2], packagePrefix), nil
+}
+
+func tryGitlab(pkg, packagePrefix string) (*Tuple, error) {
+	if !strings.HasPrefix(pkg, "gitlab.com") {
+		return nil, nil
+	}
+	parts := strings.Split(pkg, "/")
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("unexpected Gitlab package name: %q", pkg)
+	}
+	return newTuple(GL{}, pkg, parts[1], parts[2], packagePrefix), nil
+}
+
+// noMatch returns "unparsed" tuple as a fallback.
+func noMatch(pkg, packagePrefix string) (*Tuple, error) {
+	return newTuple(nil, pkg, "", "", packagePrefix), nil
 }
 
 var groupRe = regexp.MustCompile(`[^\w]+`)
 
-func (t *Tuple) setSource(source Source, account, project string) {
-	t.Source = source
-	t.Account = account
-	t.Project = project
-	group := account + "_" + project
-	group = groupRe.ReplaceAllString(group, "_")
-	t.Group = strings.ToLower(group)
-}
-
-func (t *Tuple) fromGithub() error {
-	parts := strings.Split(t.Package, "/")
-	if len(parts) < 3 {
-		return fmt.Errorf("unexpected Github package name: %q", t.Package)
+func newTuple(source Source, pkg, account, project, packagePrefix string) *Tuple {
+	t := &Tuple{
+		Source:  source,
+		Package: pkg,
+		Account: account,
+		Project: project,
+		Prefix:  packagePrefix,
 	}
-	t.setSource(GH{}, parts[1], parts[2])
-	return nil
-}
-
-func (t *Tuple) fromGitlab() error {
-	parts := strings.Split(t.Package, "/")
-	if len(parts) < 3 {
-		return fmt.Errorf("unexpected Gitlab package name: %q", t.Package)
+	if t.Account != "" && t.Project != "" {
+		group := t.Account + "_" + t.Project
+		group = groupRe.ReplaceAllString(group, "_")
+		t.Group = strings.ToLower(group)
+	} else {
+		t.Group = "group_name"
 	}
-	t.setSource(GL{}, parts[1], parts[2])
-	return nil
+	return t
 }

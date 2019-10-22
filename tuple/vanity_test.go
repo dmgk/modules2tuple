@@ -4,8 +4,8 @@ import "testing"
 
 func testExamples(t *testing.T, name string, fn vanityParser, examples [][]string) {
 	for i, x := range examples {
-		tuple := &Tuple{Package: x[0]}
-		if !fn(tuple) {
+		tuple := fn(x[0], "vendor")
+		if tuple == nil {
 			t.Errorf("%s: expected %q to match", name, x[0])
 		}
 		if tuple.Account != x[1] {
@@ -19,7 +19,7 @@ func testExamples(t *testing.T, name string, fn vanityParser, examples [][]strin
 
 func TestParseGopkgInName(t *testing.T) {
 	examples := [][]string{
-		// name, expected account, expected project
+		// pkg, expected account, expected project
 		{"gopkg.in/pkg.v3", "go-pkg", "pkg"},
 		{"gopkg.in/user/pkg.v3", "user", "pkg"},
 		{"gopkg.in/pkg-with-dashes.v3", "go-pkg-with-dashes", "pkg-with-dashes"},

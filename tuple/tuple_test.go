@@ -190,8 +190,8 @@ GL_TUPLE=	\
 		gitlab-org:gitaly-proto:v1.32.0:gitlab_org_gitaly_proto/vendor/gitlab.com/gitlab-org/gitaly-proto \
 		gitlab-org:labkit:0c3fc7cdd57c:gitlab_org_labkit/vendor/gitlab.com/gitlab-org/labkit
 		# Mirrors for the following packages are not currently known, please look them up and handle these tuples manually:
-		#	::v1.0.0:/vendor/another.vanity_url.org/account/project
-		#	::v1.2.3:/vendor/some_unknown.vanity_url.net/account/project
+		#	::v1.0.0:group_name/vendor/another.vanity_url.org/account/project
+		#	::v1.2.3:group_name/vendor/some_unknown.vanity_url.net/account/project
 `
 
 	tt, err := NewParser("vendor", true).Read(strings.NewReader(given))

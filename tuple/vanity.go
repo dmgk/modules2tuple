@@ -2,7 +2,7 @@ package tuple
 
 import "regexp"
 
-type vanityParser func(*Tuple) bool
+type vanityParser func(string, string) *Tuple
 
 var vanity = map[string]vanityParser{
 	"go.mozilla.org": goMozillaOrgParser,
@@ -12,91 +12,85 @@ var vanity = map[string]vanityParser{
 	"k8s.io":         k8sIoParser,
 }
 
-func (t *Tuple) fromVanity() bool {
+func tryVanity(pkg, packagePrefix string) (*Tuple, error) {
 	for _, fn := range vanity {
-		if fn(t) {
-			return true
+		if t := fn(pkg, packagePrefix); t != nil {
+			return t, nil
 		}
 	}
-	return false
+	return nil, nil
 }
 
 // go.mozilla.org/gopgagent -> github.com/mozilla-services/gopgagent
 var goMozillaOrgRe = regexp.MustCompile(`\Ago\.mozilla\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func goMozillaOrgParser(t *Tuple) bool {
-	if !goMozillaOrgRe.MatchString(t.Package) {
-		return false
+func goMozillaOrgParser(pkg, packagePrefix string) *Tuple {
+	if !goMozillaOrgRe.MatchString(pkg) {
+		return nil
 	}
-	sm := goMozillaOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := goMozillaOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil
 	}
-	t.setSource(GH{}, "mozilla-services", sm[0][1])
-	return true
+	return newTuple(GH{}, pkg, "mozilla-services", sm[0][1], packagePrefix)
 }
 
 // go.uber.org/zap -> github.com/uber-go/zap
 var goUberOrgRe = regexp.MustCompile(`\Ago\.uber\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func goUberOrgParser(t *Tuple) bool {
-	if !goUberOrgRe.MatchString(t.Package) {
-		return false
+func goUberOrgParser(pkg, packagePrefix string) *Tuple {
+	if !goUberOrgRe.MatchString(pkg) {
+		return nil
 	}
-	sm := goUberOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := goUberOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil
 	}
-	t.setSource(GH{}, "uber-go", sm[0][1])
-	return true
+	return newTuple(GH{}, pkg, "uber-go", sm[0][1], packagePrefix)
 }
 
 // golang.org/x/pkg -> github.com/golang/pkg
 var golangOrgRe = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func golangOrgParser(t *Tuple) bool {
-	if !golangOrgRe.MatchString(t.Package) {
-		return false
+func golangOrgParser(pkg, packagePrefix string) *Tuple {
+	if !golangOrgRe.MatchString(pkg) {
+		return nil
 	}
-	sm := golangOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := golangOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil
 	}
-	t.setSource(GH{}, "golang", sm[0][1])
-	return true
+	return newTuple(GH{}, pkg, "golang", sm[0][1], packagePrefix)
 }
 
 // gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
 // gopkg.in/user/pkg.v3 -> github.com/user/pkg
 var gopkgInRe = regexp.MustCompile(`\Agopkg\.in/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+)?(?:/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+))?\z`)
 
-func gopkgInParser(t *Tuple) bool {
-	if !gopkgInRe.MatchString(t.Package) {
-		return false
+func gopkgInParser(pkg, packagePrefix string) *Tuple {
+	if !gopkgInRe.MatchString(pkg) {
+		return nil
 	}
-	sm := gopkgInRe.FindAllStringSubmatch(t.Package, -1)
+	sm := gopkgInRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil
 	}
 	if sm[0][2] == "" {
-		t.setSource(GH{}, "go-"+sm[0][1], sm[0][1])
-	} else {
-		t.setSource(GH{}, sm[0][1], sm[0][2])
+		return newTuple(GH{}, pkg, "go-"+sm[0][1], sm[0][1], packagePrefix)
 	}
-	return true
+	return newTuple(GH{}, pkg, sm[0][1], sm[0][2], packagePrefix)
 }
 
 // k8s.io/api -> github.com/kubernetes/api
 var k8sIoRe = regexp.MustCompile(`\Ak8s\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func k8sIoParser(t *Tuple) bool {
-	if !k8sIoRe.MatchString(t.Package) {
-		return false
+func k8sIoParser(pkg, packagePrefix string) *Tuple {
+	if !k8sIoRe.MatchString(pkg) {
+		return nil
 	}
-	sm := k8sIoRe.FindAllStringSubmatch(t.Package, -1)
+	sm := k8sIoRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil
 	}
-	t.setSource(GH{}, "kubernetes", sm[0][1])
-	return true
+	return newTuple(GH{}, pkg, "kubernetes", sm[0][1], packagePrefix)
 }

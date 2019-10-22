@@ -26,10 +26,9 @@ var mirrors = map[string]struct {
 	"sigs.k8s.io/yaml":                          {source: GH{}, account: "kubernetes-sigs", project: "yaml"},
 }
 
-func (t *Tuple) fromMirror() bool {
-	if m, ok := mirrors[t.Package]; ok {
-		t.setSource(m.source, m.account, m.project)
-		return true
+func tryMirror(pkg, packagePrefix string) (*Tuple, error) {
+	if m, ok := mirrors[pkg]; ok {
+		return newTuple(m.source, pkg, m.account, m.project, packagePrefix), nil
 	}
-	return false
+	return nil, nil
 }
