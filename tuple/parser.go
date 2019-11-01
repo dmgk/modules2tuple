@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dmgk/modules2tuple/gitlab"
+	"github.com/dmgk/modules2tuple/apis"
 )
 
 type Parser struct {
@@ -53,7 +53,7 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 						// Call Gitlab API to translate go.mod short commit IDs and tags
 						// to the full 40-character commit IDs as required by bsd.sites.mk
 						if _, ok := t.Source.(GL); ok {
-							c, err := gitlab.GetCommit(t.Source.Site(), t.Account, t.Project, t.Tag)
+							c, err := apis.GetGitlabCommit(t.Source.Site(), t.Account, t.Project, t.Tag)
 							if err != nil {
 								ch <- err
 								return
@@ -88,7 +88,18 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 		}
 	}
 	sort.Sort(ByAccountAndProject(tuples))
+
 	tuples.EnsureUniqueGroups()
+	if !p.offline {
+		if err := tuples.EnsureUniqueGithubProjectAndTag(); err != nil {
+			switch err := err.(type) {
+			case DuplicateProjectAndTag:
+				errors.DuplicateProjectAndTag = append(errors.DuplicateProjectAndTag, err)
+			default:
+				return nil, err
+			}
+		}
+	}
 
 	if errors.Any() {
 		return tuples, errors

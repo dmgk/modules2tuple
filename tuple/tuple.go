@@ -2,11 +2,14 @@ package tuple
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/dmgk/modules2tuple/apis"
 )
 
 type Tuple struct {
@@ -38,8 +41,8 @@ func (tt Tuples) EnsureUniqueGroups() {
 	var prevGroup string
 	suffix := 1
 
-	for i, t := range tt {
-		if i == 0 {
+	for _, t := range tt {
+		if prevGroup == "" {
 			prevGroup = t.Group
 			continue
 		}
@@ -51,6 +54,48 @@ func (tt Tuples) EnsureUniqueGroups() {
 			suffix = 1
 		}
 	}
+}
+
+// EnsureUniqueGithubProjectAndTag checks that tuples have a unique GH_PROJECT/GH_TAGNAME
+// combination. Due to the way Github prepares release tarballs and th way ports framework
+// works, tuples sharing GH_PROJECT/GH_TAGNAME pair will be extracted to the same directory.
+// Try avoiding this mess by switching one of the conflicting tuple's GH_TAGNAME from git tag
+// to git commit ID.
+// This function assumes that tt is pre-sorted in ByAccountAndProject order.
+func (tt Tuples) EnsureUniqueGithubProjectAndTag() error {
+	if len(tt) < 2 {
+		return nil
+	}
+
+	var prevTuple *Tuple
+
+	for _, t := range tt {
+		if _, ok := t.Source.(GH); !ok {
+			// not a Github tuple, skip
+			continue
+		}
+
+		if prevTuple == nil {
+			prevTuple = t
+			continue
+		}
+
+		if t.Account != prevTuple.Account {
+			// different Account, but the same Project and Tag
+			if t.Project == prevTuple.Project && t.Tag == prevTuple.Tag {
+				c, err := apis.GetGithubCommit(t.Account, t.Project, t.Tag)
+				if err != nil {
+					return DuplicateProjectAndTag(t.String())
+				}
+				if len(c.ID) < 12 {
+					return errors.New("unexpectedly short commit ID")
+				}
+				t.Tag = c.ID[:12]
+			}
+		}
+	}
+
+	return nil
 }
 
 type ByAccountAndProject Tuples
@@ -116,12 +161,14 @@ type Errors struct {
 	Source                     []SourceError
 	ReplacementLocalFilesystem []ReplacementLocalFilesystemError
 	ReplacementMissingCommit   []ReplacementMissingCommitError
+	DuplicateProjectAndTag     []DuplicateProjectAndTag
 }
 
 func (ee Errors) Any() bool {
 	return len(ee.Source) > 0 ||
 		len(ee.ReplacementLocalFilesystem) > 0 ||
-		len(ee.ReplacementMissingCommit) > 0
+		len(ee.ReplacementMissingCommit) > 0 ||
+		len(ee.DuplicateProjectAndTag) > 0
 }
 
 func (ee Errors) Error() string {
@@ -157,7 +204,23 @@ func (ee Errors) Error() string {
 		}
 	}
 
+	if len(ee.DuplicateProjectAndTag) > 0 {
+		buf.WriteString("\t\t# The following tuple has duplicate GH_PROJECT/GH_TAGNAME combinations and an attempt to fix it using Github API failed:\n")
+		sort.Slice(ee.DuplicateProjectAndTag, func(i, j int) bool {
+			return ee.DuplicateProjectAndTag[i] < ee.DuplicateProjectAndTag[j]
+		})
+		for _, err := range ee.DuplicateProjectAndTag {
+			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
+		}
+	}
+
 	return buf.String()
+}
+
+type SourceError string
+
+func (err SourceError) Error() string {
+	return string(err)
 }
 
 type ReplacementLocalFilesystemError string
@@ -172,9 +235,9 @@ func (err ReplacementMissingCommitError) Error() string {
 	return string(err)
 }
 
-type SourceError string
+type DuplicateProjectAndTag string
 
-func (err SourceError) Error() string {
+func (err DuplicateProjectAndTag) Error() string {
 	return string(err)
 }
 

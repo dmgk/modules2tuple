@@ -175,8 +175,7 @@ gitlab.com/gitlab-org/labkit/correlation
 # gitlab.com/gitlab-org/gitaly-proto v1.32.0
 gitlab.com/gitlab-org/gitaly-proto/go/gitalypb
 # github.com/golang/lint v0.0.0-20190409202823-959b441ac422 => golang.org/x/lint v0.0.0-20190409202823-959b441ac422
-# github.com/ugorji/go v1.1.4 => github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
-`
+# github.com/ugorji/go v1.1.4 => github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43`
 
 	expected := `GH_TUPLE=	\
 		cockroachdb:cockroach-go:e0a95dfd547c:cockroachdb_cockroach_go/vendor/github.com/cockroachdb/cockroach-go \
@@ -210,8 +209,7 @@ func TestUniqueGroups(t *testing.T) {
 # github.com/minio/mc v0.0.0-20190924013003-643835013047
 # github.com/minio/minio-go v0.0.0-20190327203652-5325257a208f
 # github.com/minio/minio-go/v6 v6.0.39
-# github.com/minio/parquet-go v0.0.0-20190318185229-9d767baf1679
-`
+# github.com/minio/parquet-go v0.0.0-20190318185229-9d767baf1679`
 
 	expected := `GH_TUPLE=	\
 		minio:lsync:v1.0.1:minio_lsync/vendor/github.com/minio/lsync \
