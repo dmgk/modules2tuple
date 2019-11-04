@@ -80,6 +80,7 @@ func TestParseTag(t *testing.T) {
 		{"github.com/pkg/errors v1.2.3-0.20150716171945-2caba252f4dc", "2caba252f4dc"},
 		{"github.com/pkg/errors v1.2.3-42.20150716171945-2caba252f4dc", "2caba252f4dc"},
 		{"github.com/docker/libnetwork v0.8.0-dev.2.0.20180608203834-19279f049241", "19279f049241"},
+		{"github.com/hjson/hjson-go v3.0.1-0.20190209023717-9147687966d9+incompatible", "9147687966d9"},
 	}
 
 	for i, x := range examples {

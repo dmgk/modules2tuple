@@ -251,7 +251,8 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 // v1.2.3-20181001143604-e0a95dfd547c
 // v1.2.3-3.20181001143604-e0a95dfd547c
 // v0.8.0-dev.2.0.20180608203834-19279f049241
-var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:[0-9A-Za-z\.]+\.)?\d{14}-([0-9a-f]+)\z`)
+// v3.0.1-0.20190209023717-9147687966d9+incompatible
+var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:[0-9A-Za-z\.]+\.)?\d{14}-([0-9a-f]+)(?:\+incompatible)?\z`)
 
 // Parse parses a package spec into Tuple.
 func Parse(spec, packagePrefix string) (*Tuple, error) {
