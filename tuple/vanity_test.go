@@ -17,6 +17,22 @@ func testExamples(t *testing.T, name string, fn vanityParser, examples [][]strin
 	}
 }
 
+func TestParseCodeCloudfoundryOrg(t *testing.T) {
+	examples := [][]string{
+		// name, expected account, expected project
+		{"code.cloudfoundry.org/gofileutils", "cloudfoundry", "gofileutils"},
+	}
+	testExamples(t, "codeCloudfoundryOrgParser", codeCloudfoundryOrgParser, examples)
+}
+
+func TestParseGoEtcdIoParser(t *testing.T) {
+	examples := [][]string{
+		// name, expected account, expected project
+		{"go.etcd.io/bbolt", "etcd-io", "bbolt"},
+	}
+	testExamples(t, "goEtcdIoParser", goEtcdIoParser, examples)
+}
+
 func TestParseGopkgInName(t *testing.T) {
 	examples := [][]string{
 		// pkg, expected account, expected project

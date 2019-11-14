@@ -5,11 +5,13 @@ import "regexp"
 type vanityParser func(string, string) *Tuple
 
 var vanity = map[string]vanityParser{
-	"go.mozilla.org": goMozillaOrgParser,
-	"go.uber.org":    goUberOrgParser,
-	"golang.org":     golangOrgParser,
-	"gopkg.in":       gopkgInParser,
-	"k8s.io":         k8sIoParser,
+	"code.cloudfoundry.org": codeCloudfoundryOrgParser,
+	"go.etcd.io":            goEtcdIoParser,
+	"go.mozilla.org":        goMozillaOrgParser,
+	"go.uber.org":           goUberOrgParser,
+	"golang.org":            golangOrgParser,
+	"gopkg.in":              gopkgInParser,
+	"k8s.io":                k8sIoParser,
 }
 
 func tryVanity(pkg, packagePrefix string) (*Tuple, error) {
@@ -19,6 +21,34 @@ func tryVanity(pkg, packagePrefix string) (*Tuple, error) {
 		}
 	}
 	return nil, nil
+}
+
+// code.cloudfoundry.org/gofileutils -> github.com/cloudfoundry/gofileutils
+var codeCloudfoundryOrgRe = regexp.MustCompile(`\Acode\.cloudfoundry\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
+func codeCloudfoundryOrgParser(pkg, packagePrefix string) *Tuple {
+	if !codeCloudfoundryOrgRe.MatchString(pkg) {
+		return nil
+	}
+	sm := codeCloudfoundryOrgRe.FindAllStringSubmatch(pkg, -1)
+	if len(sm) == 0 {
+		return nil
+	}
+	return newTuple(GH{}, pkg, "cloudfoundry", sm[0][1], packagePrefix)
+}
+
+// go.etcd.io/etcd -> github.com/etcd-io/etcd
+var goEtcdIoRe = regexp.MustCompile(`\Ago\.etcd\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
+func goEtcdIoParser(pkg, packagePrefix string) *Tuple {
+	if !goEtcdIoRe.MatchString(pkg) {
+		return nil
+	}
+	sm := goEtcdIoRe.FindAllStringSubmatch(pkg, -1)
+	if len(sm) == 0 {
+		return nil
+	}
+	return newTuple(GH{}, pkg, "etcd-io", sm[0][1], packagePrefix)
 }
 
 // go.mozilla.org/gopgagent -> github.com/mozilla-services/gopgagent

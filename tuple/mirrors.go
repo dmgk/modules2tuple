@@ -23,6 +23,7 @@ var mirrors = map[string]struct {
 	"gopkg.in/fsnotify.v1":                      {source: GH{}, account: "fsnotify", project: "fsnotify"}, // fsnotify is a special case in gopkg.in
 	"gotest.tools":                              {source: GH{}, account: "gotestyourself", project: "gotest.tools"},
 	"howett.net/plist":                          {source: GL{"https://gitlab.howett.net"}, account: "go", project: "plist"},
+	"layeh.com/radius":                          {source: GH{}, account: "layeh", project: "radius"},
 	"sigs.k8s.io/yaml":                          {source: GH{}, account: "kubernetes-sigs", project: "yaml"},
 }
 
