@@ -7,6 +7,7 @@ import (
 	"path"
 	"text/template"
 
+	"github.com/dmgk/modules2tuple/spack"
 	"github.com/dmgk/modules2tuple/tuple"
 )
 
@@ -28,7 +29,16 @@ func main() {
 	parser := tuple.NewParser(flagPackagePrefix, flagOffline)
 	tuples, errors := parser.Load(args[0])
 	if len(tuples) != 0 {
-		fmt.Println(tuples)
+		if !flagSpack {
+			fmt.Println(tuples)
+		} else {
+			resources, err := spack.Resources(flagAppVersion, tuples)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+			fmt.Println(resources)
+		}
 	}
 	if errors != nil {
 		fmt.Println(errors)
@@ -53,7 +63,9 @@ this commit ID translation can be disabled with -offline flag.
 
 var (
 	flagOffline       = false
+	flagSpack         = false
 	flagPackagePrefix = "vendor"
+	flagAppVersion    = ""
 	flagVersion       = false
 )
 
@@ -63,7 +75,9 @@ func init() {
 	basename := path.Base(os.Args[0])
 
 	flag.BoolVar(&flagOffline, "offline", flagOffline, "disable network access")
+	flag.BoolVar(&flagSpack, "spack", flagSpack, "print Spack resource stanzas")
 	flag.StringVar(&flagPackagePrefix, "prefix", "vendor", "package prefix")
+	flag.StringVar(&flagAppVersion, "app_version", "", "application version (for spack)")
 	flag.BoolVar(&flagVersion, "v", flagVersion, "show version")
 
 	flag.Usage = func() {
