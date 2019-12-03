@@ -3,7 +3,7 @@ package spack
 import (
 	"testing"
 
-	"github.com/hartzell/modules2tuple/tuple"
+	"github.com/dmgk/modules2tuple/tuple"
 )
 
 // ExpectedError should only occur if regexp match fails or template
@@ -52,6 +52,17 @@ func TestResource(t *testing.T) {
              tag="v1.3.0",
              destination=".",
              placement="vendor/github.com/rogpeppe/go-internal")`,
+			ExpectedError: "",
+		},
+		// A nonstandard, GitLab repo
+		{AppVersion: "",
+			Tuple: tParse("howett.net/plist v0.0.0-20181124034731-591f970eefbb"),
+			Expected: `
+    resource(name="howett.net/plist",
+             git="https://gitlab.howett.net/go/plist",
+             commit="591f970eefbb",
+             destination=".",
+             placement="vendor/howett.net/plist")`,
 			ExpectedError: "",
 		},
 	}

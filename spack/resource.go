@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"text/template"
 
-	"github.com/hartzell/modules2tuple/tuple"
+	"github.com/dmgk/modules2tuple/tuple"
 )
 
 type resource struct {
