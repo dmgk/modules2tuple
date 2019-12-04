@@ -1,87 +1,88 @@
 package spack
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
-	"text/template"
 
 	"github.com/dmgk/modules2tuple/tuple"
 )
 
-type resource struct {
-	AppVersion   string
-	Name         string
-	RepoURL      string
-	Fetcher      string
-	CommitIdType string
-	CommitId     string
-	Placement    string
+type Resource struct {
+	Name        string `json:"name,omitempty"`
+	Git         string `json:"git,omitempty"`
+	Tag         string `json:"tag,omitempty"`
+	Commit      string `json:"commit,omitempty"`
+	Placement   string `json:"placement,omitempty"`
+	When        string `json:"when,omitempty"`
+	Destination string `json:"destination,omitempty"`
 }
 
-func Resources(appVersion string, tt tuple.Tuples) (string, error) {
-	buf := bytes.Buffer{}
-	for _, t := range tt {
-		r, err := Resource(appVersion, t)
-		if err != nil {
-			return "", err
-		}
-		buf.WriteString(r)
+type Resources []*Resource
+
+func (r Resources) ToJson() ([]byte, error) {
+	b, err := json.Marshal(r)
+	if err != nil {
+		return nil, err
 	}
-	return buf.String(), nil
+	return b, nil
 }
 
-func Resource(appVersion string, t *tuple.Tuple) (string, error) {
-	var repoSite string
-	var repoURL string
-	var fetcher = "git"
+func (r Resource) ToJson() ([]byte, error) {
+	b, err := json.Marshal(r)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func ResourcesFromTuples(appVersion string, tt tuple.Tuples) (Resources, error) {
+	resources := make(Resources, 0, len(tt))
+
+	for _, t := range tt {
+		r, err := resourceFromTuple(appVersion, t)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, r)
+	}
+
+	return resources, nil
+}
+
+func resourceFromTuple(appVersion string, t *tuple.Tuple) (*Resource, error) {
+	r := Resource{
+		Name:        t.Package,
+		Destination: ".",
+		Placement:   fmt.Sprintf("%s/%s", t.Prefix, t.Package),
+	}
 
 	st := reflect.TypeOf(t.Source)
 	switch st.String() {
 	case "tuple.GH":
-		repoSite = "https://github.com" // tuple.GH.Site() returns ""...
-		repoURL = fmt.Sprintf("%s/%s/%s", repoSite, t.Account, t.Project)
+		repoSite := "https://github.com" // tuple.GH.Site() returns ""...
+		r.Git = fmt.Sprintf("%s/%s/%s", repoSite, t.Account, t.Project)
 	case "tuple.GL":
-		repoSite = t.Source.Site()
-		repoURL = fmt.Sprintf("%s/%s/%s", repoSite, t.Account, t.Project)
+		repoSite := t.Source.Site()
+		r.Git = fmt.Sprintf("%s/%s/%s", repoSite, t.Account, t.Project)
 	default:
-		return "", fmt.Errorf("Unknown site type: %s", st.String())
+		return nil, fmt.Errorf("Unknown site type: %s", st.String())
 	}
 
-	commitIdType := "tag"
-	commitId := t.Tag
 	matched, err := regexp.MatchString("[0-9a-f]{12}", t.Tag)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if matched {
-		commitIdType = "commit"
-		// commitId = commitId[:7]
+		r.Commit = t.Tag
+	} else {
+		r.Tag = t.Tag
 	}
 
-	var buf bytes.Buffer
-	r := resource{
-		AppVersion:   appVersion,
-		Name:         t.Package,
-		RepoURL:      repoURL,
-		Fetcher:      fetcher,
-		CommitIdType: commitIdType,
-		CommitId:     commitId,
-		Placement:    fmt.Sprintf("%s/%s", t.Prefix, t.Package),
-	}
-	resource_template := `
-    resource(name="{{.Name}}",
-             {{.Fetcher}}="{{.RepoURL}}",
-             {{.CommitIdType}}="{{.CommitId}}",
-             destination=".",{{if .AppVersion}}
-             when="@{{.AppVersion}}",{{end}}
-             placement="{{.Placement}}")`
-	templ := template.Must(template.New("resource").Parse(resource_template))
-	err = templ.Execute(&buf, r)
-	if err != nil {
-		return "", err
+	if appVersion != "" {
+		r.When = "@" + appVersion
 	}
 
-	return buf.String(), nil
+	return &r, nil
 }
