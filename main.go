@@ -32,12 +32,17 @@ func main() {
 		if !flagSpack {
 			fmt.Println(tuples)
 		} else {
-			resources, err := spack.Resources(flagAppVersion, tuples)
+			resources, err := spack.ResourcesFromTuples(flagAppVersion, tuples)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, err.Error())
 				os.Exit(1)
 			}
-			fmt.Println(resources)
+			json, err := resources.ToJson()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+			fmt.Println(string(json))
 		}
 	}
 	if errors != nil {
