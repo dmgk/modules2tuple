@@ -76,3 +76,11 @@ func TestParseGoMozillaOrgName(t *testing.T) {
 	}
 	testExamples(t, "goMozillaOrgParser", goMozillaOrgParser, examples)
 }
+
+func TestParseMvdanCcName(t *testing.T) {
+	examples := [][]string{
+		// name, expected account, expected project
+		{"mvdan.cc/editorconfig", "mvdan", "editorconfig"},
+	}
+	testExamples(t, "mvdanCcParser", mvdanCcParser, examples)
+}
