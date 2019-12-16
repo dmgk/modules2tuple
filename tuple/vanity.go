@@ -12,6 +12,7 @@ var vanity = map[string]vanityParser{
 	"golang.org":            golangOrgParser,
 	"gopkg.in":              gopkgInParser,
 	"k8s.io":                k8sIoParser,
+	"mvdan.cc":              mvdanCcParser,
 }
 
 func tryVanity(pkg, packagePrefix string) (*Tuple, error) {
@@ -123,4 +124,18 @@ func k8sIoParser(pkg, packagePrefix string) *Tuple {
 		return nil
 	}
 	return newTuple(GH{}, pkg, "kubernetes", sm[0][1], packagePrefix)
+}
+
+// mvdan.cc/editorconfig -> github.com/mvdan/editconfig
+var mvdanCcRe = regexp.MustCompile(`\Amvdan\.cc/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
+func mvdanCcParser(pkg, packagePrefix string) *Tuple {
+	if !mvdanCcRe.MatchString(pkg) {
+		return nil
+	}
+	sm := mvdanCcRe.FindAllStringSubmatch(pkg, -1)
+	if len(sm) == 0 {
+		return nil
+	}
+	return newTuple(GH{}, pkg, "mvdan", sm[0][1], packagePrefix)
 }
