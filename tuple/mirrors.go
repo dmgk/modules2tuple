@@ -10,6 +10,7 @@ var mirrors = map[string]struct {
 	"contrib.go.opencensus.io/exporter/ocagent": {source: GH{}, account: "census-ecosystem", project: "opencensus-go-exporter-ocagent"},
 	"docker.io/go-docker":                       {source: GH{}, account: "docker", project: "go-docker"},
 	"git.apache.org/thrift.git":                 {source: GH{}, account: "apache", project: "thrift"},
+	"go.bug.st/serial.v1":                       {source: GH{}, account: "bugst", project: "go-serial"},
 	"go.elastic.co/apm":                         {source: GH{}, account: "elastic", project: "apm-agent-go"},
 	"go.elastic.co/fastjson":                    {source: GH{}, account: "elastic", project: "go-fastjson"},
 	"go.mongodb.org/mongo-driver":               {source: GH{}, account: "mongodb", project: "mongo-go-driver"},
@@ -25,6 +26,7 @@ var mirrors = map[string]struct {
 	"howett.net/plist":                          {source: GL{"https://gitlab.howett.net"}, account: "go", project: "plist"},
 	"layeh.com/radius":                          {source: GH{}, account: "layeh", project: "radius"},
 	"sigs.k8s.io/yaml":                          {source: GH{}, account: "kubernetes-sigs", project: "yaml"},
+	"tinygo.org/x/go-llvm":                      {source: GH{}, account: "tinygo-org", project: "go-llvm"},
 }
 
 func tryMirror(pkg, packagePrefix string) (*Tuple, error) {
