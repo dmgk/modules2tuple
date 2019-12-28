@@ -28,10 +28,10 @@ func main() {
 	parser := tuple.NewParser(flagPackagePrefix, flagOffline)
 	tuples, errors := parser.Load(args[0])
 	if len(tuples) != 0 {
-		fmt.Println(tuples)
+		fmt.Print(tuples)
 	}
 	if errors != nil {
-		fmt.Println(errors)
+		fmt.Print(errors)
 	}
 }
 

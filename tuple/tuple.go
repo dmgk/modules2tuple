@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -112,45 +111,37 @@ func (tt ByAccountAndProject) Less(i, j int) bool {
 	return tt[i].String() < tt[j].String()
 }
 
+// If tuple contains more than largeLimit entries, start tuple list on the new line for easier sorting/editing.
+// Otherwise omit the first line continuation for more compact representation.
+const largeLimit = 3
+
 func (tt Tuples) String() string {
 	if len(tt) == 0 {
 		return ""
 	}
 
-	bufs := make(map[reflect.Type]*bytes.Buffer)
-
+	tm := make(map[Source][]string)
 	for _, t := range tt {
-		st := reflect.TypeOf(t.Source)
-		if st == nil {
-			panic(fmt.Sprintf("unknown source in tuple: %v", t))
-		}
-
-		buf, ok := bufs[st]
-		if !ok {
-			buf = &bytes.Buffer{}
-			bufs[st] = buf
-		}
-
-		var eol string
-		if buf.Len() == 0 {
-			buf.WriteString(fmt.Sprintf("%s=\t", t.Source.VarName()))
-			eol = `\`
-		}
-		s := t.String()
-		if strings.HasPrefix(s, "#") {
-			eol = ""
-		} else if eol == "" {
-			eol = ` \`
-		}
-		buf.WriteString(fmt.Sprintf("%s\n\t\t%s", eol, s))
+		tm[t.Source] = append(tm[t.Source], t.String())
 	}
 
 	var ss []string
-	for _, buf := range bufs {
-		s := buf.String()
-		if len(s) > 0 {
-			ss = append(ss, s)
+	for s, ee := range tm {
+		buf := bytes.NewBufferString(fmt.Sprintf("%s=\t", s.VarName()))
+		large := len(ee) > largeLimit
+		if large {
+			buf.WriteString("\\\n")
 		}
+		for i := 0; i < len(ee); i += 1 {
+			if i > 0 || large {
+				buf.WriteString("\t\t")
+			}
+			buf.WriteString(ee[i])
+			if i < len(ee)-1 {
+				buf.WriteString(" \\\n")
+			}
+		}
+		ss = append(ss, buf.String())
 	}
 	sort.Sort(sort.StringSlice(ss))
 

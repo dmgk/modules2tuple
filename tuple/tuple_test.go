@@ -186,8 +186,7 @@ gitlab.com/gitlab-org/gitaly-proto/go/gitalypb
 		ugorji:go:e444a5086c43:ugorji_go/vendor/github.com/ugorji/go \
 		user:pkg:v3.0.0:user_pkg/vendor/gopkg.in/user/pkg.v3
 
-GL_TUPLE=	\
-		gitlab-org:gitaly-proto:v1.32.0:gitlab_org_gitaly_proto/vendor/gitlab.com/gitlab-org/gitaly-proto \
+GL_TUPLE=	gitlab-org:gitaly-proto:v1.32.0:gitlab_org_gitaly_proto/vendor/gitlab.com/gitlab-org/gitaly-proto \
 		gitlab-org:labkit:0c3fc7cdd57c:gitlab_org_labkit/vendor/gitlab.com/gitlab-org/labkit
 		# Mirrors for the following packages are not currently known, please look them up and handle these tuples manually:
 		#	::v1.0.0:group_name/vendor/another.vanity_url.org/account/project
@@ -226,6 +225,6 @@ func TestUniqueGroups(t *testing.T) {
 	}
 	out := tt.String()
 	if out != expected {
-		t.Errorf("expected output %s, got %s", expected, out)
+		t.Errorf("expected output\n%s, got\n%s", expected, out)
 	}
 }
