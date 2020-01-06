@@ -5,6 +5,7 @@ import "regexp"
 type vanityParser func(string, string) *Tuple
 
 var vanity = map[string]vanityParser{
+	"cloud.google.com":      cloudGoogleComParser,
 	"code.cloudfoundry.org": codeCloudfoundryOrgParser,
 	"go.etcd.io":            goEtcdIoParser,
 	"go.mozilla.org":        goMozillaOrgParser,
@@ -22,6 +23,16 @@ func tryVanity(pkg, packagePrefix string) (*Tuple, error) {
 		}
 	}
 	return nil, nil
+}
+
+// cloud.google.com/go/* -> github.com/googleapis/google-cloud-go
+var cloudGoogleComRe = regexp.MustCompile(`\Acloud\.google\.com/go(/([0-9A-Za-z][-0-9A-Za-z]+))?\z`)
+
+func cloudGoogleComParser(pkg, packagePrefix string) *Tuple {
+	if !cloudGoogleComRe.MatchString(pkg) {
+		return nil
+	}
+	return newTuple(GH{}, pkg, "googleapis", "google-cloud-go", packagePrefix)
 }
 
 // code.cloudfoundry.org/gofileutils -> github.com/cloudfoundry/gofileutils

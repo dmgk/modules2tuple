@@ -5,8 +5,7 @@ var mirrors = map[string]struct {
 	account string
 	project string
 }{
-	"camlistore.org":                            {source: GH{}, account: "perkeep", project: "perkeep"},
-	"cloud.google.com/go":                       {source: GH{}, account: "googleapis", project: "google-cloud-go"},
+	"camlistore.org": {source: GH{}, account: "perkeep", project: "perkeep"},
 	"contrib.go.opencensus.io/exporter/ocagent": {source: GH{}, account: "census-ecosystem", project: "opencensus-go-exporter-ocagent"},
 	"docker.io/go-docker":                       {source: GH{}, account: "docker", project: "go-docker"},
 	"git.apache.org/thrift.git":                 {source: GH{}, account: "apache", project: "thrift"},
@@ -23,6 +22,7 @@ var mirrors = map[string]struct {
 	"google.golang.org/grpc":                    {source: GH{}, account: "grpc", project: "grpc-go"},
 	"gopkg.in/fsnotify.v1":                      {source: GH{}, account: "fsnotify", project: "fsnotify"}, // fsnotify is a special case in gopkg.in
 	"gotest.tools":                              {source: GH{}, account: "gotestyourself", project: "gotest.tools"},
+	"honnef.co/go/tools":                        {source: GH{}, account: "dominikh", project: "go-tools"},
 	"howett.net/plist":                          {source: GL{"https://gitlab.howett.net"}, account: "go", project: "plist"},
 	"layeh.com/radius":                          {source: GH{}, account: "layeh", project: "radius"},
 	"sigs.k8s.io/yaml":                          {source: GH{}, account: "kubernetes-sigs", project: "yaml"},

@@ -6,7 +6,7 @@ func testExamples(t *testing.T, name string, fn vanityParser, examples [][]strin
 	for i, x := range examples {
 		tuple := fn(x[0], "vendor")
 		if tuple == nil {
-			t.Errorf("%s: expected %q to match", name, x[0])
+			t.Fatalf("%s: expected %q to match", name, x[0])
 		}
 		if tuple.Account != x[1] {
 			t.Errorf("%s: expected account to be %q, got %q (example %d)", name, x[1], tuple.Account, i)
@@ -15,6 +15,15 @@ func testExamples(t *testing.T, name string, fn vanityParser, examples [][]strin
 			t.Errorf("%s: expected project to be %q, got %q (example %d)", name, x[2], tuple.Project, i)
 		}
 	}
+}
+
+func TestCloudGoogleCom(t *testing.T) {
+	examples := [][]string{
+		// name, expected account, expected project
+		{"cloud.google.com/go", "googleapis", "google-cloud-go"},
+		{"cloud.google.com/go/storage", "googleapis", "google-cloud-go"},
+	}
+	testExamples(t, "cloudGoogleComParser", cloudGoogleComParser, examples)
 }
 
 func TestParseCodeCloudfoundryOrg(t *testing.T) {
