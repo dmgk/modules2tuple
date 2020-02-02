@@ -31,6 +31,7 @@ func main() {
 		fmt.Print(tuples)
 	}
 	if errors != nil {
+		fmt.Println()
 		fmt.Print(errors)
 	}
 }
