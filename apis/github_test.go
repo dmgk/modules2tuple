@@ -6,10 +6,10 @@ import "testing"
 
 func TestGetGithubCommit(t *testing.T) {
 	examples := []struct {
-		site, account, project, ref, ID string
+		account, project, ref, ID string
 	}{
-		{"https://gitlab.com", "dmgk", "modules2tuple", "v1.9.0", "fc09878b93db35aafc74311f7ea6684ac08a3b83"},
-		{"https://gitlab.com", "dmgk", "modules2tuple", "a0cdb416ca2c", "a0cdb416ca2cbf6d3dad67a97f4fdcfac954503e"},
+		{"dmgk", "modules2tuple", "v1.9.0", "fc09878b93db35aafc74311f7ea6684ac08a3b83"},
+		{"dmgk", "modules2tuple", "a0cdb416ca2c", "a0cdb416ca2cbf6d3dad67a97f4fdcfac954503e"},
 	}
 
 	for i, x := range examples {
