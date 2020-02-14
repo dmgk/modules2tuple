@@ -17,6 +17,14 @@ func testExamples(t *testing.T, name string, fn vanityParser, examples [][]strin
 	}
 }
 
+func TestParseBazilOrgName(t *testing.T) {
+	examples := [][]string{
+		// name, expected account, expected project
+		{"bazil.org/fuse", "bazil", "fuse"},
+	}
+	testExamples(t, "bazilOrgParser", bazilOrgParser, examples)
+}
+
 func TestCloudGoogleCom(t *testing.T) {
 	examples := [][]string{
 		// name, expected account, expected project
@@ -92,4 +100,12 @@ func TestParseMvdanCcName(t *testing.T) {
 		{"mvdan.cc/editorconfig", "mvdan", "editorconfig"},
 	}
 	testExamples(t, "mvdanCcParser", mvdanCcParser, examples)
+}
+
+func TestParseRscIoName(t *testing.T) {
+	examples := [][]string{
+		// name, expected account, expected project
+		{"rsc.io/pdf", "rsc", "pdf"},
+	}
+	testExamples(t, "rscIoParser", rscIoParser, examples)
 }

@@ -5,6 +5,7 @@ import "regexp"
 type vanityParser func(string, string) *Tuple
 
 var vanity = map[string]vanityParser{
+	"bazil.org":             bazilOrgParser,
 	"cloud.google.com":      cloudGoogleComParser,
 	"code.cloudfoundry.org": codeCloudfoundryOrgParser,
 	"go.etcd.io":            goEtcdIoParser,
@@ -14,6 +15,7 @@ var vanity = map[string]vanityParser{
 	"gopkg.in":              gopkgInParser,
 	"k8s.io":                k8sIoParser,
 	"mvdan.cc":              mvdanCcParser,
+	"rsc.io":                rscIoParser,
 }
 
 func tryVanity(pkg, packagePrefix string) (*Tuple, error) {
@@ -23,6 +25,20 @@ func tryVanity(pkg, packagePrefix string) (*Tuple, error) {
 		}
 	}
 	return nil, nil
+}
+
+// bazil.org/fuse -> github.com/bazil/fuse
+var bazilOrgRe = regexp.MustCompile(`\Abazil\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
+func bazilOrgParser(pkg, packagePrefix string) *Tuple {
+	if !bazilOrgRe.MatchString(pkg) {
+		return nil
+	}
+	sm := bazilOrgRe.FindAllStringSubmatch(pkg, -1)
+	if len(sm) == 0 {
+		return nil
+	}
+	return newTuple(GH{}, pkg, "bazil", sm[0][1], packagePrefix)
 }
 
 // cloud.google.com/go/* -> github.com/googleapis/google-cloud-go
@@ -149,4 +165,18 @@ func mvdanCcParser(pkg, packagePrefix string) *Tuple {
 		return nil
 	}
 	return newTuple(GH{}, pkg, "mvdan", sm[0][1], packagePrefix)
+}
+
+// rsc.io/pdf -> github.com/rsc/pdf
+var rscIoRe = regexp.MustCompile(`\Arsc\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+
+func rscIoParser(pkg, packagePrefix string) *Tuple {
+	if !rscIoRe.MatchString(pkg) {
+		return nil
+	}
+	sm := rscIoRe.FindAllStringSubmatch(pkg, -1)
+	if len(sm) == 0 {
+		return nil
+	}
+	return newTuple(GH{}, pkg, "rsc", sm[0][1], packagePrefix)
 }
