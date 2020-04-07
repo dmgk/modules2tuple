@@ -53,8 +53,8 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 							ch <- err
 							return
 						}
+						t.PostProcessSubdir()
 					}
-					t.PostProcessSubdir()
 					ch <- t
 				}()
 			}
@@ -81,9 +81,11 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 			tuples = append(tuples, res.(*Tuple))
 		}
 	}
-	sort.Sort(ByAccountAndProject(tuples))
+	sort.Sort(ByTupleString(tuples))
 
+	tuples = tuples.EnsureUnique()
 	tuples.EnsureUniqueGroups()
+
 	if !p.offline {
 		if err := tuples.EnsureUniqueGithubProjectAndTag(); err != nil {
 			switch err := err.(type) {

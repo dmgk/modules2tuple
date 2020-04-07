@@ -95,7 +95,7 @@ func ListGithubTags(account, project, tag string) ([]string, error) {
 	return res, nil
 }
 
-func LookupGithubTag(account, project, tag string) (string, error) {
+func LookupGithubTag(account, project, path, tag string) (string, error) {
 	hasTag, err := HasGithubTag(account, project, tag)
 	if err != nil {
 		return "", err
@@ -115,7 +115,7 @@ func LookupGithubTag(account, project, tag string) (string, error) {
 	// Github API returns tags sorted by creation time, earliest first.
 	// Iterate through them in reverse order to find the most recent matching tag.
 	for i := len(allTags) - 1; i >= 0; i-- {
-		if strings.HasSuffix(allTags[i], "/"+tag) {
+		if strings.HasSuffix(allTags[i], path+"/"+tag) {
 			return strings.TrimPrefix(allTags[i], "refs/tags/"), nil
 		}
 	}

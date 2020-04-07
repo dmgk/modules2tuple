@@ -25,19 +25,19 @@ func TestGetGithubCommit(t *testing.T) {
 
 func TestLookupGithubTag(t *testing.T) {
 	examples := []struct {
-		account, project, given, expected string
+		account, project, packageSuffix, given, expected string
 	}{
-		// existing tag
-		{"hashicorp", "vault", "v1.3.4", "v1.3.4"},
+		// tag exists as-is
+		{"hashicorp", "vault", "", "v1.3.4", "v1.3.4"},
 		// tag exists but with prefix
-		{"hashicorp", "vault", "v1.0.4", "api/v1.0.4"},
-		{"hashicorp", "vault", "v0.1.13", "sdk/v0.1.13"},
+		{"hashicorp", "vault", "api", "v1.0.4", "api/v1.0.4"},
+		{"hashicorp", "vault", "sdk", "v0.1.13", "sdk/v0.1.13"},
 		// this repo has earlier mathing tag "codec/codecgen/v1.1.7"
-		{"ugorji", "go", "v1.1.7", "v1.1.7"},
+		{"ugorji", "go", "", "v1.1.7", "v1.1.7"},
 	}
 
 	for i, x := range examples {
-		tag, err := LookupGithubTag(x.account, x.project, x.given)
+		tag, err := LookupGithubTag(x.account, x.project, x.packageSuffix, x.given)
 		if err != nil {
 			t.Fatal(err)
 		}

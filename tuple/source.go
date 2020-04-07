@@ -6,6 +6,7 @@ type Source interface {
 	Site() string
 	IsDefaultSite() bool
 	VarName() string
+	String() string
 }
 
 type GH struct{}

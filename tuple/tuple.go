@@ -22,6 +22,24 @@ type Tuple struct {
 	Subdir  string // GH_TUPLE subdir
 }
 
+func (t *Tuple) IsEqual(another *Tuple) bool {
+	return t.Source.String() == another.Source.String() &&
+		t.Account == another.Account &&
+		t.Project == another.Project &&
+		t.Tag == another.Tag &&
+		t.Subdir == another.Subdir
+}
+
+// PackageSuffix returns Go package suffix (e.g. "v2" in "github.com/googleapis/gax-go/v2")
+func (t *Tuple) PackageSuffix() string {
+	// github.com/googleapis/gax-go/v2
+	parts := strings.SplitN(t.Package, "/", 4)
+	if len(parts) < 4 {
+		return "" // no package suffix
+	}
+	return parts[3]
+}
+
 func (t *Tuple) String() string {
 	if t.Source != nil && !t.Source.IsDefaultSite() {
 		return fmt.Sprintf("%s:%s:%s:%s:%s/%s/%s", t.Source.Site(), t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Subdir)
@@ -34,9 +52,8 @@ func (t *Tuple) PostProcessTag(lookupGithubTag bool) error {
 	case GH:
 		if lookupGithubTag && strings.HasPrefix(t.Tag, "v") {
 			// Call Gihub API to check tags. Go seem to be able to magically
-			// translate tags like "v1.0.4" to the "api/v1.0.4" actually used
-			// by upstream, lets try to do the same.
-			tag, err := apis.LookupGithubTag(t.Account, t.Project, t.Tag)
+			// translate tags like "v1.0.4" to the "api/v1.0.4", lets try to do the same.
+			tag, err := apis.LookupGithubTag(t.Account, t.Project, t.PackageSuffix(), t.Tag)
 			if err != nil {
 				return err
 			}
@@ -56,21 +73,14 @@ func (t *Tuple) PostProcessTag(lookupGithubTag bool) error {
 
 func (t *Tuple) PostProcessSubdir() error {
 	if _, ok := t.Source.(GH); ok {
-		// github.com/googleapis/gax-go/v2
-		parts := strings.SplitN(t.Package, "/", 4)
-		if len(parts) < 4 {
-			return nil // no package suffix
-		}
-		packageSuffix := parts[3] // "v2"
-
+		packageSuffix := t.PackageSuffix()
 		hasContentAtSuffix, err := apis.HasGithubContentsAtPath(t.Account, t.Project, packageSuffix, t.Tag)
 		if err != nil {
 			return err
 		}
-
 		if hasContentAtSuffix {
 			// Trim suffix from GH_TUPLE subdir because repo already has contents and it'll
-			// be extracted at the correct path
+			// be extracted at the correct path.
 			t.Subdir = strings.TrimSuffix(t.Subdir, "/"+packageSuffix)
 		}
 	}
@@ -79,8 +89,28 @@ func (t *Tuple) PostProcessSubdir() error {
 
 type Tuples []*Tuple
 
+// EnsureUnique returns a new Tuples slice with duplicates removed.
+// This function assumes that tt is pre-sorted in ByTupleString order.
+func (tt Tuples) EnsureUnique() Tuples {
+	if len(tt) < 2 {
+		return tt
+	}
+
+	var res Tuples
+	var prevTuple *Tuple
+
+	for _, t := range tt {
+		if prevTuple != nil && t.IsEqual(prevTuple) {
+			continue
+		}
+		res = append(res, t)
+		prevTuple = t
+	}
+	return res
+}
+
 // EnsureUniqueGroups makes sure all Group names are unique.
-// This function assumes that tt is pre-sorted in ByAccountAndProject order.
+// This function assumes that tt is pre-sorted in ByTupleString order.
 func (tt Tuples) EnsureUniqueGroups() {
 	if len(tt) < 2 {
 		return
@@ -109,7 +139,7 @@ func (tt Tuples) EnsureUniqueGroups() {
 // works, tuples sharing GH_PROJECT/GH_TAGNAME pair will be extracted into the same directory.
 // Try avoiding this mess by switching one of the conflicting tuple's GH_TAGNAME from git tag
 // to git commit ID.
-// This function assumes that tt is pre-sorted in ByAccountAndProject order.
+// This function assumes that tt is pre-sorted in ByTupleString order.
 func (tt Tuples) EnsureUniqueGithubProjectAndTag() error {
 	if len(tt) < 2 {
 		return nil
@@ -146,17 +176,17 @@ func (tt Tuples) EnsureUniqueGithubProjectAndTag() error {
 	return nil
 }
 
-type ByAccountAndProject Tuples
+type ByTupleString Tuples
 
-func (tt ByAccountAndProject) Len() int {
+func (tt ByTupleString) Len() int {
 	return len(tt)
 }
 
-func (tt ByAccountAndProject) Swap(i, j int) {
+func (tt ByTupleString) Swap(i, j int) {
 	tt[i], tt[j] = tt[j], tt[i]
 }
 
-func (tt ByAccountAndProject) Less(i, j int) bool {
+func (tt ByTupleString) Less(i, j int) bool {
 	return tt[i].String() < tt[j].String()
 }
 
