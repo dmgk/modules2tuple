@@ -47,28 +47,76 @@ func GetGithubCommit(account, project, tag string) (string, error) {
 	return res.SHA, nil
 }
 
-func LookupGithubTag(account, project, tag string) (string, error) {
+func HasGithubTag(account, project, tag string) (bool, error) {
+	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
+	url := fmt.Sprintf("https://api.github.com/repos/%s/git/refs/tags/%s", projectID, tag)
+
+	resp, err := get(url, flags.GithubCredentialsKey)
+	if err != nil {
+		if err == errNotFound {
+			return false, nil
+		}
+		if strings.Contains(err.Error(), "API rate limit exceeded") {
+			return false, errors.New(githubRateLimitError)
+		}
+		return false, fmt.Errorf("error getting refs for %s/%s: %v", account, project, err)
+	}
+
+	var ref GithubRef
+	if err := json.Unmarshal(resp, &ref); err != nil {
+		return false, fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+	}
+
+	return true, nil
+}
+
+func ListGithubTags(account, project, tag string) ([]string, error) {
 	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
 	url := fmt.Sprintf("https://api.github.com/repos/%s/git/refs/tags", projectID)
 
 	resp, err := get(url, flags.GithubCredentialsKey)
 	if err != nil {
 		if strings.Contains(err.Error(), "API rate limit exceeded") {
-			return "", errors.New(githubRateLimitError)
+			return nil, errors.New(githubRateLimitError)
 		}
-		return "", fmt.Errorf("error getting refs for %s/%s: %v", account, project, err)
+		return nil, fmt.Errorf("error getting refs for %s/%s: %v", account, project, err)
 	}
 
-	var res []GithubRef
-	if err := json.Unmarshal(resp, &res); err != nil {
-		return "", fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+	var refs []GithubRef
+	if err := json.Unmarshal(resp, &refs); err != nil {
+		return nil, fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+	}
+
+	var res []string
+	for _, r := range refs {
+		res = append(res, r.Ref)
+	}
+
+	return res, nil
+}
+
+func LookupGithubTag(account, project, tag string) (string, error) {
+	hasTag, err := HasGithubTag(account, project, tag)
+	if err != nil {
+		return "", err
+	}
+
+	// tag was found as-is
+	if hasTag {
+		return tag, nil
+	}
+
+	// tag was not found, try to look it up
+	allTags, err := ListGithubTags(account, project, tag)
+	if err != nil {
+		return "", err
 	}
 
 	// Github API returns tags sorted by creation time, earliest first.
 	// Iterate through them in reverse order to find the most recent matching tag.
-	for i := len(res) - 1; i >= 0; i-- {
-		if strings.HasSuffix(res[i].Ref, "/"+tag) {
-			return strings.TrimPrefix(res[i].Ref, "refs/tags/"), nil
+	for i := len(allTags) - 1; i >= 0; i-- {
+		if strings.HasSuffix(allTags[i], "/"+tag) {
+			return strings.TrimPrefix(allTags[i], "refs/tags/"), nil
 		}
 	}
 

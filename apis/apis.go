@@ -1,12 +1,15 @@
 package apis
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 )
+
+var errNotFound = errors.New("not found")
 
 func get(url string, credsKey string) ([]byte, error) {
 	req, err := http.NewRequest("GET", url, nil)
@@ -37,6 +40,8 @@ func get(url string, credsKey string) ([]byte, error) {
 			return nil, fmt.Errorf("GET %s: %v", url, err)
 		}
 		return body, nil
+	case http.StatusNotFound:
+		return nil, errNotFound
 	default:
 		body, _ := ioutil.ReadAll(resp.Body)
 		return nil, fmt.Errorf("GET %s: %d, body: %v", url, resp.StatusCode, string(body))

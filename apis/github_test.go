@@ -27,8 +27,11 @@ func TestLookupGithubTag(t *testing.T) {
 	examples := []struct {
 		account, project, given, expected string
 	}{
-		{"hashicorp", "vault", "v1.0.4", "api/v1.0.4"},
+		// existing tag
 		{"hashicorp", "vault", "v1.3.4", "v1.3.4"},
+		// tag exists but with prefix
+		{"hashicorp", "vault", "v1.0.4", "api/v1.0.4"},
+		{"hashicorp", "vault", "v0.1.13", "sdk/v0.1.13"},
 		// this repo has earlier mathing tag "codec/codecgen/v1.1.7"
 		{"ugorji", "go", "v1.1.7", "v1.1.7"},
 	}
