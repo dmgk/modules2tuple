@@ -1,5 +1,7 @@
 package tuple
 
+import "strings"
+
 var mirrors = map[string]struct {
 	source  Source
 	account string
@@ -30,8 +32,10 @@ var mirrors = map[string]struct {
 }
 
 func tryMirror(pkg, subdirPrefix string) (*Tuple, error) {
-	if m, ok := mirrors[pkg]; ok {
-		return newTuple(m.source, pkg, m.account, m.project, subdirPrefix), nil
+	for k, v := range mirrors {
+		if strings.HasPrefix(pkg, k) {
+			return newTuple(v.source, pkg, v.account, v.project, subdirPrefix), nil
+		}
 	}
 	return nil, nil
 }

@@ -33,6 +33,9 @@ func TestParseName(t *testing.T) {
 		// gocloud.dev
 		{"gocloud.dev v0.16.0", "google", "go-cloud"},
 
+		// check mirror handling by prefix
+		{"go.elastic.co/apm/module/apmhttp v0.1.0", "elastic", "apm-agent-go"},
+
 		// Other known mirrors
 		{"google.golang.org/api v1.0.0", "googleapis", "google-api-go-client"},
 	}
