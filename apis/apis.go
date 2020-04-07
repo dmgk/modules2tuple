@@ -4,10 +4,33 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 )
 
-func get(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+const (
+	OfflineKey           = "M2T_OFFLINE"
+	GithubCredentialsKey = "M2T_GITHUB"
+	// GitlabsCredentialsKey = "M2T_GITLAB"
+)
+
+func get(url string, credsKey string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if credsKey != "" {
+		creds := os.Getenv(credsKey)
+		if creds != "" {
+			credsSlice := strings.Split(creds, ":")
+			if len(credsSlice) == 2 {
+				req.SetBasicAuth(credsSlice[0], credsSlice[1])
+			}
+		}
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("GET %s: %v", url, err)
 	}

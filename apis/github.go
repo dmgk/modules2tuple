@@ -2,27 +2,71 @@ package apis
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 type GithubCommit struct {
-	ID string `json:"sha"`
+	SHA string `json:"sha"`
 }
 
-func GetGithubCommit(account, project, ref string) (*GithubCommit, error) {
+type GithubRef struct {
+	Ref string `json:"ref"`
+}
+
+var githubRateLimitError = fmt.Sprintf(`Github API rate limit exceeded. Please either:
+- set %s environment variable to your Github "username:personal_access_token"
+  to let modules2tuple call Github API using basic authentication.
+  To create a new token, navigate to https://github.com/settings/tokens/new
+  (leave all checkboxes unchecked, modules2tuple doesn't need any access to your account)
+- set %s=1 or pass "-offline" flag to module2tuple to disable network access`, OfflineKey, GithubCredentialsKey)
+
+func GetGithubCommit(account, project, tag string) (string, error) {
 	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
-	url := fmt.Sprintf("https://api.github.com/repos/%s/commits/%s", projectID, ref)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/commits/%s", projectID, tag)
 
-	resp, err := get(url)
+	resp, err := get(url, GithubCredentialsKey)
 	if err != nil {
-		return nil, fmt.Errorf("error getting commit %s for %s/%s: %v", ref, account, project, err)
+		if strings.Contains(err.Error(), "API rate limit exceeded") {
+			return "", errors.New(githubRateLimitError)
+		}
+		return "", fmt.Errorf("error getting commit %s for %s/%s: %v", tag, account, project, err)
 	}
 
-	var ret GithubCommit
-	if err := json.Unmarshal(resp, &ret); err != nil {
-		return nil, fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+	var res GithubCommit
+	if err := json.Unmarshal(resp, &res); err != nil {
+		return "", fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
 	}
 
-	return &ret, nil
+	return res.SHA, nil
+}
+
+func LookupGithubTag(account, project, tag string) (string, error) {
+	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
+	url := fmt.Sprintf("https://api.github.com/repos/%s/git/refs/tags", projectID)
+
+	resp, err := get(url, GithubCredentialsKey)
+	if err != nil {
+		if strings.Contains(err.Error(), "API rate limit exceeded") {
+			return "", errors.New(githubRateLimitError)
+		}
+		return "", fmt.Errorf("error getting refs for %s/%s: %v", account, project, err)
+	}
+
+	var res []GithubRef
+	if err := json.Unmarshal(resp, &res); err != nil {
+		return "", fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+	}
+
+	// Github API returns tags sorted by creation time, earliest first.
+	// Iterate through them in reverse order to find the most recent matching tag.
+	for i := len(res) - 1; i >= 0; i-- {
+		if strings.HasSuffix(res[i].Ref, "/"+tag) {
+			return strings.TrimPrefix(res[i].Ref, "refs/tags/"), nil
+		}
+	}
+
+	return "", fmt.Errorf("tag %v doesn't seem to exist in %s/%s", tag, account, project)
 }

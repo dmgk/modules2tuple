@@ -7,6 +7,7 @@ import (
 	"path"
 	"text/template"
 
+	"github.com/dmgk/modules2tuple/apis"
 	"github.com/dmgk/modules2tuple/tuple"
 )
 
@@ -25,14 +26,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	var haveTuples bool
 	parser := tuple.NewParser(flagPackagePrefix, flagOffline)
 	tuples, errors := parser.Load(args[0])
 	if len(tuples) != 0 {
 		fmt.Print(tuples)
+		haveTuples = true
 	}
 	if errors != nil {
-		fmt.Println()
+		if haveTuples {
+			fmt.Println()
+		}
 		fmt.Print(errors)
+		fmt.Println()
 	}
 }
 
@@ -53,7 +59,7 @@ this commit ID translation can be disabled with -offline flag.
 `))
 
 var (
-	flagOffline       = false
+	flagOffline       = os.Getenv(apis.OfflineKey) != ""
 	flagPackagePrefix = "vendor"
 	flagVersion       = false
 )

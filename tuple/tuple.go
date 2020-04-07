@@ -82,14 +82,14 @@ func (tt Tuples) EnsureUniqueGithubProjectAndTag() error {
 		if t.Account != prevTuple.Account {
 			// different Account, but the same Project and Tag
 			if t.Project == prevTuple.Project && t.Tag == prevTuple.Tag {
-				c, err := apis.GetGithubCommit(t.Account, t.Project, t.Tag)
+				hash, err := apis.GetGithubCommit(t.Account, t.Project, t.Tag)
 				if err != nil {
 					return DuplicateProjectAndTag(t.String())
 				}
-				if len(c.ID) < 12 {
-					return errors.New("unexpectedly short commit ID")
+				if len(hash) < 12 {
+					return errors.New("unexpectedly short Githib commit hash")
 				}
-				t.Tag = c.ID[:12]
+				t.Tag = hash[:12]
 			}
 		}
 	}

@@ -7,22 +7,22 @@ import (
 )
 
 type GitlabCommit struct {
-	ID string `json:"id"`
+	SHA string `json:"id"`
 }
 
-func GetGitlabCommit(site, account, project, commit string) (*GitlabCommit, error) {
+func GetGitlabCommit(site, account, project, commit string) (string, error) {
 	projectID := url.PathEscape(fmt.Sprintf("%s/%s", account, project))
 	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", site, projectID, commit)
 
-	resp, err := get(url)
+	resp, err := get(url, "")
 	if err != nil {
-		return nil, fmt.Errorf("error getting commit %s for %s/%s: %v", commit, account, project, err)
+		return "", fmt.Errorf("error getting commit %s for %s/%s: %v", commit, account, project, err)
 	}
 
-	var ret GitlabCommit
-	if err := json.Unmarshal(resp, &ret); err != nil {
-		return nil, fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+	var res GitlabCommit
+	if err := json.Unmarshal(resp, &res); err != nil {
+		return "", fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
 	}
 
-	return &ret, nil
+	return res.SHA, nil
 }

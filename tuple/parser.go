@@ -50,15 +50,28 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 						return
 					}
 					if !p.offline {
-						// Call Gitlab API to translate go.mod short commit IDs and tags
-						// to the full 40-character commit IDs as required by bsd.sites.mk
-						if _, ok := t.Source.(GL); ok {
-							c, err := apis.GetGitlabCommit(t.Source.Site(), t.Account, t.Project, t.Tag)
+						switch t.Source.(type) {
+						case GH:
+							if strings.HasPrefix(t.Tag, "v") {
+								// Call Gihub API to check tags. Go seem to be able to magically
+								// translate tags like "v1.0.4" to the "api/v1.0.4" which is really used
+								// by upstream. We'll try to do the same.
+								tag, err := apis.LookupGithubTag(t.Account, t.Project, t.Tag)
+								if err != nil {
+									ch <- err
+									return
+								}
+								t.Tag = tag
+							}
+						case GL:
+							// Call Gitlab API to translate go.mod short commit IDs and tags
+							// to the full 40-character commit IDs as required by bsd.sites.mk
+							hash, err := apis.GetGitlabCommit(t.Source.Site(), t.Account, t.Project, t.Tag)
 							if err != nil {
 								ch <- err
 								return
 							}
-							t.Tag = c.ID
+							t.Tag = hash
 						}
 					}
 					ch <- t
