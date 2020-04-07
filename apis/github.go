@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/dmgk/modules2tuple/flags"
 )
 
 type GithubCommit struct {
@@ -21,13 +23,15 @@ var githubRateLimitError = fmt.Sprintf(`Github API rate limit exceeded. Please e
   to let modules2tuple call Github API using basic authentication.
   To create a new token, navigate to https://github.com/settings/tokens/new
   (leave all checkboxes unchecked, modules2tuple doesn't need any access to your account)
-- set %s=1 or pass "-offline" flag to module2tuple to disable network access`, OfflineKey, GithubCredentialsKey)
+- set %s=0 and/or remove "-ghtags" flag to turn off Github tags lookup
+- set %s=1 or pass "-offline" flag to module2tuple to disable network access`,
+	flags.GithubCredentialsKey, flags.LookupGithubTagsKey, flags.OfflineKey)
 
 func GetGithubCommit(account, project, tag string) (string, error) {
 	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
 	url := fmt.Sprintf("https://api.github.com/repos/%s/commits/%s", projectID, tag)
 
-	resp, err := get(url, GithubCredentialsKey)
+	resp, err := get(url, flags.GithubCredentialsKey)
 	if err != nil {
 		if strings.Contains(err.Error(), "API rate limit exceeded") {
 			return "", errors.New(githubRateLimitError)
@@ -47,7 +51,7 @@ func LookupGithubTag(account, project, tag string) (string, error) {
 	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
 	url := fmt.Sprintf("https://api.github.com/repos/%s/git/refs/tags", projectID)
 
-	resp, err := get(url, GithubCredentialsKey)
+	resp, err := get(url, flags.GithubCredentialsKey)
 	if err != nil {
 		if strings.Contains(err.Error(), "API rate limit exceeded") {
 			return "", errors.New(githubRateLimitError)

@@ -16,7 +16,7 @@ func TestUniqueProjectAndTag(t *testing.T) {
 		ugorji:go:23ab95ef5dc3:ugorji_go/vendor/github.com/ugorji/go
 `
 
-	tt, err := NewParser("vendor", false).Read(strings.NewReader(given))
+	tt, err := NewParser("vendor", false, true).Read(strings.NewReader(given))
 	if err != nil {
 		t.Fatal(err)
 	}

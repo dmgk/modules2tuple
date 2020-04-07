@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-const (
-	OfflineKey           = "M2T_OFFLINE"
-	GithubCredentialsKey = "M2T_GITHUB"
-	// GitlabsCredentialsKey = "M2T_GITLAB"
-)
-
 func get(url string, credsKey string) ([]byte, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

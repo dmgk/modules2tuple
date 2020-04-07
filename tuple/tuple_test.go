@@ -193,7 +193,7 @@ GL_TUPLE=	gitlab-org:gitaly-proto:v1.32.0:gitlab_org_gitaly_proto/vendor/gitlab.
 		#	::v1.2.3:group_name/vendor/some_unknown.vanity_url.net/account/project
 `
 
-	tt, err := NewParser("vendor", true).Read(strings.NewReader(given))
+	tt, err := NewParser("vendor", true, false).Read(strings.NewReader(given))
 	if err == nil {
 		t.Fatal("expected err to not be nil")
 	}
@@ -219,7 +219,7 @@ func TestUniqueGroups(t *testing.T) {
 		minio:parquet-go:9d767baf1679:minio_parquet_go/vendor/github.com/minio/parquet-go
 `
 
-	tt, err := NewParser("vendor", true).Read(strings.NewReader(given))
+	tt, err := NewParser("vendor", true, false).Read(strings.NewReader(given))
 	if err != nil {
 		t.Fatal(err)
 	}

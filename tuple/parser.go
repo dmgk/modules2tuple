@@ -15,11 +15,12 @@ import (
 type Parser struct {
 	packagePrefix string
 	offline       bool
+	lookupTags    bool
 }
 
 // NewParser creates a new modules.txt parser with given options.
-func NewParser(packagePrefix string, offline bool) *Parser {
-	return &Parser{packagePrefix, offline}
+func NewParser(packagePrefix string, offline bool, lookupTags bool) *Parser {
+	return &Parser{packagePrefix, offline, lookupTags}
 }
 
 // Read parses tuples from modules.txt contents provided as io.Reader.
@@ -52,7 +53,7 @@ func (p *Parser) Read(r io.Reader) (Tuples, error) {
 					if !p.offline {
 						switch t.Source.(type) {
 						case GH:
-							if strings.HasPrefix(t.Tag, "v") {
+							if p.lookupTags && strings.HasPrefix(t.Tag, "v") {
 								// Call Gihub API to check tags. Go seem to be able to magically
 								// translate tags like "v1.0.4" to the "api/v1.0.4" which is really used
 								// by upstream. We'll try to do the same.
