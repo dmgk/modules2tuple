@@ -18,14 +18,63 @@ type Tuple struct {
 	Project string // project
 	Tag     string // tag or commit ID
 	Group   string // GH_TUPLE group
-	Prefix  string // package prefix
+	Prefix  string // GH_TUPLE subdir prefix (e.g. "vendor")
+	Subdir  string // GH_TUPLE subdir
 }
 
 func (t *Tuple) String() string {
 	if t.Source != nil && !t.Source.IsDefaultSite() {
-		return fmt.Sprintf("%s:%s:%s:%s:%s/%s/%s", t.Source.Site(), t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Package)
+		return fmt.Sprintf("%s:%s:%s:%s:%s/%s/%s", t.Source.Site(), t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Subdir)
 	}
-	return fmt.Sprintf("%s:%s:%s:%s/%s/%s", t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Package)
+	return fmt.Sprintf("%s:%s:%s:%s/%s/%s", t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Subdir)
+}
+
+func (t *Tuple) PostProcessTag(lookupGithubTag bool) error {
+	switch t.Source.(type) {
+	case GH:
+		if lookupGithubTag && strings.HasPrefix(t.Tag, "v") {
+			// Call Gihub API to check tags. Go seem to be able to magically
+			// translate tags like "v1.0.4" to the "api/v1.0.4" actually used
+			// by upstream, lets try to do the same.
+			tag, err := apis.LookupGithubTag(t.Account, t.Project, t.Tag)
+			if err != nil {
+				return err
+			}
+			t.Tag = tag
+		}
+	case GL:
+		// Call Gitlab API to translate go.mod short commit IDs and tags
+		// to the full 40-character commit IDs as required by bsd.sites.mk
+		hash, err := apis.GetGitlabCommit(t.Source.Site(), t.Account, t.Project, t.Tag)
+		if err != nil {
+			return err
+		}
+		t.Tag = hash
+	}
+	return nil
+}
+
+func (t *Tuple) PostProcessSubdir() error {
+	if _, ok := t.Source.(GH); ok {
+		// github.com/googleapis/gax-go/v2
+		parts := strings.SplitN(t.Package, "/", 4)
+		if len(parts) < 4 {
+			return nil // no package suffix
+		}
+		packageSuffix := parts[3] // "v2"
+
+		hasContentAtSuffix, err := apis.HasGithubContentsAtPath(t.Account, t.Project, packageSuffix, t.Tag)
+		if err != nil {
+			return err
+		}
+
+		if hasContentAtSuffix {
+			// Trim suffix from GH_TUPLE subdir because repo already has contents and it'll
+			// be extracted at the correct path
+			t.Subdir = strings.TrimSuffix(t.Subdir, "/"+packageSuffix)
+		}
+	}
+	return nil
 }
 
 type Tuples []*Tuple
@@ -56,8 +105,8 @@ func (tt Tuples) EnsureUniqueGroups() {
 }
 
 // EnsureUniqueGithubProjectAndTag checks that tuples have a unique GH_PROJECT/GH_TAGNAME
-// combination. Due to the way Github prepares release tarballs and th way ports framework
-// works, tuples sharing GH_PROJECT/GH_TAGNAME pair will be extracted to the same directory.
+// combination. Due to the way Github prepares release tarballs and the way port framework
+// works, tuples sharing GH_PROJECT/GH_TAGNAME pair will be extracted into the same directory.
 // Try avoiding this mess by switching one of the conflicting tuple's GH_TAGNAME from git tag
 // to git commit ID.
 // This function assumes that tt is pre-sorted in ByAccountAndProject order.
@@ -246,8 +295,8 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:[0-9A-Za-z\.]+\.)?\d{14}-([0-9a-f]+)(?:\+incompatible)?\z`)
 
 // Parse parses a package spec into Tuple.
-func Parse(spec, packagePrefix string) (*Tuple, error) {
-	t, err := parseReplaceSpec(spec, packagePrefix)
+func Parse(spec, subdirPrefix string) (*Tuple, error) {
+	t, err := parseReplaceSpec(spec, subdirPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -255,10 +304,10 @@ func Parse(spec, packagePrefix string) (*Tuple, error) {
 		// Tuple was parsed from a replace spec
 		return t, nil
 	}
-	return parseSpec(spec, packagePrefix)
+	return parseSpec(spec, subdirPrefix)
 }
 
-func parseReplaceSpec(spec, packagePrefix string) (*Tuple, error) {
+func parseReplaceSpec(spec, subdirPrefix string) (*Tuple, error) {
 	const replaceOp = " => "
 
 	if !strings.Contains(spec, replaceOp) {
@@ -296,18 +345,19 @@ func parseReplaceSpec(spec, packagePrefix string) (*Tuple, error) {
 		return nil, fmt.Errorf("unexpected number of fields in the replace spec target: %q", spec)
 	}
 
-	t, err := parseSpec(replaceSpecs[1], packagePrefix)
+	t, err := parseSpec(replaceSpecs[1], subdirPrefix)
 	if err != nil {
 		return nil, err
 	}
 
-	// Keep the target package's account/project/tag but set the source package name
+	// Keep the target package's account/project/tag but set the source package name and subdir
 	t.Package = sourcePkg
+	t.Subdir = sourcePkg
 
 	return t, nil
 }
 
-func parseSpec(spec, packagePrefix string) (*Tuple, error) {
+func parseSpec(spec, subdirPrefix string) (*Tuple, error) {
 	fields := strings.Fields(spec)
 	if len(fields) != 2 {
 		return nil, fmt.Errorf("unexpected number of fields: %q", spec)
@@ -326,7 +376,7 @@ func parseSpec(spec, packagePrefix string) (*Tuple, error) {
 	var t *Tuple
 	for _, fn := range pkgParsers {
 		var err error
-		t, err = fn(pkg, packagePrefix)
+		t, err = fn(pkg, subdirPrefix)
 		if err != nil {
 			return nil, err
 		}
@@ -353,7 +403,7 @@ func parseSpec(spec, packagePrefix string) (*Tuple, error) {
 	return t, nil
 }
 
-func tryGithub(pkg, packagePrefix string) (*Tuple, error) {
+func tryGithub(pkg, subdirPrefix string) (*Tuple, error) {
 	if !strings.HasPrefix(pkg, "github.com") {
 		return nil, nil
 	}
@@ -361,10 +411,10 @@ func tryGithub(pkg, packagePrefix string) (*Tuple, error) {
 	if len(parts) < 3 {
 		return nil, fmt.Errorf("unexpected Github package name: %q", pkg)
 	}
-	return newTuple(GH{}, pkg, parts[1], parts[2], packagePrefix), nil
+	return newTuple(GH{}, pkg, parts[1], parts[2], subdirPrefix), nil
 }
 
-func tryGitlab(pkg, packagePrefix string) (*Tuple, error) {
+func tryGitlab(pkg, subdirPrefix string) (*Tuple, error) {
 	if !strings.HasPrefix(pkg, "gitlab.com") {
 		return nil, nil
 	}
@@ -372,23 +422,24 @@ func tryGitlab(pkg, packagePrefix string) (*Tuple, error) {
 	if len(parts) < 3 {
 		return nil, fmt.Errorf("unexpected Gitlab package name: %q", pkg)
 	}
-	return newTuple(GL{}, pkg, parts[1], parts[2], packagePrefix), nil
+	return newTuple(GL{}, pkg, parts[1], parts[2], subdirPrefix), nil
 }
 
 // noMatch returns "unparsed" tuple as a fallback.
-func noMatch(pkg, packagePrefix string) (*Tuple, error) {
-	return newTuple(nil, pkg, "", "", packagePrefix), nil
+func noMatch(pkg, subdirPrefix string) (*Tuple, error) {
+	return newTuple(nil, pkg, "", "", subdirPrefix), nil
 }
 
 var groupRe = regexp.MustCompile(`[^\w]+`)
 
-func newTuple(source Source, pkg, account, project, packagePrefix string) *Tuple {
+func newTuple(source Source, pkg, account, project, subdirPrefix string) *Tuple {
 	t := &Tuple{
 		Source:  source,
 		Package: pkg,
 		Account: account,
 		Project: project,
-		Prefix:  packagePrefix,
+		Prefix:  subdirPrefix,
+		Subdir:  pkg,
 	}
 	if t.Account != "" && t.Project != "" {
 		group := t.Account + "_" + t.Project

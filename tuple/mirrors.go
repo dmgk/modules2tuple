@@ -29,9 +29,9 @@ var mirrors = map[string]struct {
 	"tinygo.org/x/go-llvm":                      {source: GH{}, account: "tinygo-org", project: "go-llvm"},
 }
 
-func tryMirror(pkg, packagePrefix string) (*Tuple, error) {
+func tryMirror(pkg, subdirPrefix string) (*Tuple, error) {
 	if m, ok := mirrors[pkg]; ok {
-		return newTuple(m.source, pkg, m.account, m.project, packagePrefix), nil
+		return newTuple(m.source, pkg, m.account, m.project, subdirPrefix), nil
 	}
 	return nil, nil
 }

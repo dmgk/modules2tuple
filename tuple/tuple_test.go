@@ -130,7 +130,7 @@ func TestPackageReplace(t *testing.T) {
 		}
 		s := tuple.String()
 		if s != x[1] {
-			t.Errorf("(%d) expected replaced package String() to return %q, got %q", i, x[1], s)
+			t.Errorf("(%d) expected replaced package String() to return\n%s\ngot\n%s", i, x[1], s)
 		}
 	}
 }

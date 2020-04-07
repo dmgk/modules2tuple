@@ -29,9 +29,9 @@ Vendor package dependencies and then run {{.Name}} on vendor/modules.txt:
   $ go mod vendor
   $ {{.Name}} vendor/modules.txt
 
-By default, generated GH_TUPLE entries will place packages under "vendor".
-This can be changed by passing different prefix using -prefix option (e.g.
--prefix src).
+By default, generated GH_TUPLE entries will place package directories under
+"vendor". This can be changed by passing different prefix using -prefix option
+(e.g. -prefix src).
 
 When generating GL_TUPLE entries, modules2tuple will attempt to use Gitlab
 API to resolve short commit IDs and tags to the full 40-character IDs as
@@ -47,13 +47,13 @@ func init() {
 
 	flag.BoolVar(&LookupGithubTags, "ghtags", LookupGithubTags, fmt.Sprintf("lookup tags with Github API (env %s)", LookupGithubTagsKey))
 	flag.BoolVar(&Offline, "offline", Offline, fmt.Sprintf("disable all network access (env %s)", OfflineKey))
-	flag.StringVar(&PackagePrefix, "prefix", PackagePrefix, fmt.Sprintf("package prefix (env %s)", PrefixKey))
+	flag.StringVar(&PackagePrefix, "prefix", PackagePrefix, fmt.Sprintf("package dir prefix (env %s)", PrefixKey))
 	flag.BoolVar(&ShowVersion, "v", false, "show version")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] modules.txt\n", basename)
 		flag.PrintDefaults()
-		helpTemplate.Execute(os.Stderr, map[string]string{
+		_ = helpTemplate.Execute(os.Stderr, map[string]string{
 			"Name": basename,
 		})
 	}

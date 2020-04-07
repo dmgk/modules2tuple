@@ -122,3 +122,15 @@ func LookupGithubTag(account, project, tag string) (string, error) {
 
 	return "", fmt.Errorf("tag %v doesn't seem to exist in %s/%s", tag, account, project)
 }
+
+func HasGithubContentsAtPath(account, project, path, tag string) (bool, error) {
+	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
+	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s?ref=%s", projectID, path, tag)
+
+	// Ignore reponse, we care only about errors
+	_, err := get(url, flags.GithubCredentialsKey)
+	if err != nil && err != errNotFound {
+		return false, err
+	}
+	return err == nil, nil
+}
