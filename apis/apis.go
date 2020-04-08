@@ -5,26 +5,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"strings"
 )
 
 var errNotFound = errors.New("not found")
 
-func get(url string, credsKey string) ([]byte, error) {
+func get(url, username, token string) ([]byte, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if credsKey != "" {
-		creds := os.Getenv(credsKey)
-		if creds != "" {
-			credsSlice := strings.Split(creds, ":")
-			if len(credsSlice) == 2 {
-				req.SetBasicAuth(credsSlice[0], credsSlice[1])
-			}
-		}
+	if username != "" && token != "" {
+		req.SetBasicAuth(username, token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

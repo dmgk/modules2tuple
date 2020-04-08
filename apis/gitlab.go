@@ -10,11 +10,14 @@ type GitlabCommit struct {
 	SHA string `json:"id"`
 }
 
-func GetGitlabCommit(site, account, project, commit string) (string, error) {
+func GitlabGetCommit(site, account, project, commit string) (string, error) {
+	if site == "" {
+		site = "https://gitlab.com"
+	}
 	projectID := url.PathEscape(fmt.Sprintf("%s/%s", account, project))
 	url := fmt.Sprintf("%s/api/v4/projects/%s/repository/commits/%s", site, projectID, commit)
 
-	resp, err := get(url, "")
+	resp, err := get(url, "", "")
 	if err != nil {
 		return "", fmt.Errorf("error getting commit %s for %s/%s: %v", commit, account, project, err)
 	}

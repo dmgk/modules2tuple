@@ -18,21 +18,22 @@ To install latest dev version directly from GitHub:
 
 #### Usage
 
-Vendor dependencies and run modules2tuple on vendor/modules.txt:
+    modules2tuple [options] modules.txt
 
-    $ go mod vendor
-    $ modules2tuple vendor/modules.txt
+    Options:
+        -offline  disable all network access (env M2T_OFFLINE, default false)
+        -v        show version
 
-By default, generated tuple entries will place packages under `vendor`. This
-can be changed by passing different prefix using `-prefix` option (e.g. `-prefix src`).
+    Usage:
+        Vendor package dependencies and then run modules2tuple with vendor/modules.txt:
 
-When generating GL_TUPLE entries, modules2tuple will attempt to use Gitlab API to
-resolve short commit IDs and tags to the full 40-character IDs as required by bsd.sites.mk. 
-If network access is not available or not wanted, this commit ID translation can be disabled
-with `-offline` flag.
+        $ go mod vendor
+        $ modules2tuple vendor/modules.txt
 
-#### Contributing
+    When running in offline mode:
+        - mirrors are looked up using static list and some may be missing
+        - module suffixes ("/v3" etc) are not automatically handled
+        - Github tags for submodules ("v1.2.3" vs "api/v1.2.3") are not automatically
+          resolved
+        - Gitlab commit IDs are not resolved to the full 40-char IDs
 
-modules2tuple knows about some GitHub mirrors and can automatically generate correct
-GH_TUPLE entries for them, but it always can use more. Please open a pull request or create an
-issue if you find some package names that it cannot handle (it leaves them commented out).

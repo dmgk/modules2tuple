@@ -1,53 +1,34 @@
 package tuple
 
-import "fmt"
-
 type Source interface {
-	Site() string
-	IsDefaultSite() bool
-	VarName() string
 	String() string
 }
 
-type GH struct{}
+type GithubSource string
 
-func (s GH) Site() string {
-	return ""
+func (s GithubSource) String() string {
+	return string(s)
 }
 
-func (s GH) IsDefaultSite() bool {
-	return true // there's only one Github
+type GitlabSource string
+
+func (s GitlabSource) String() string {
+	return string(s)
 }
 
-func (s GH) VarName() string {
-	return "GH_TUPLE"
-}
+// GH is Github default source
+var GH GithubSource
 
-func (s GH) String() string {
-	return "GH"
-}
+// GL is Gitlab default source
+var GL GitlabSource
 
-type GL struct {
-	string
-}
-
-const defaultSiteGitlab = "https://gitlab.com"
-
-func (s GL) Site() string {
-	if s.string != "" {
-		return s.string
+func sourceVarName(s Source) string {
+	switch s.(type) {
+	case GithubSource:
+		return "GH_TUPLE"
+	case GitlabSource:
+		return "GL_TUPLE"
+	default:
+		panic("unknown source type")
 	}
-	return defaultSiteGitlab
-}
-
-func (s GL) IsDefaultSite() bool {
-	return s.string == "" || s.string == defaultSiteGitlab
-}
-
-func (s GL) VarName() string {
-	return "GL_TUPLE"
-}
-
-func (s GL) String() string {
-	return fmt.Sprintf("GH{%q}", s.string)
 }

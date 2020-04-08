@@ -9,306 +9,45 @@ import (
 	"strings"
 
 	"github.com/dmgk/modules2tuple/apis"
+	"github.com/dmgk/modules2tuple/config"
 )
 
-type Tuple struct {
-	Source  Source // tuple source
-	Package string // Go package name
-	Account string // account
-	Project string // project
-	Tag     string // tag or commit ID
-	Group   string // GH_TUPLE group
-	Prefix  string // GH_TUPLE subdir prefix (e.g. "vendor")
-	Subdir  string // GH_TUPLE subdir
-}
+// Parse parses a package spec into Tuple.
+func Parse(spec string) (*Tuple, error) {
+	const replaceSep = " => "
 
-func (t *Tuple) IsEqual(another *Tuple) bool {
-	return t.Source.String() == another.Source.String() &&
-		t.Account == another.Account &&
-		t.Project == another.Project &&
-		t.Tag == another.Tag &&
-		t.Subdir == another.Subdir
-}
-
-// PackageSuffix returns Go package suffix (e.g. "v2" in "github.com/googleapis/gax-go/v2")
-func (t *Tuple) PackageSuffix() string {
-	// github.com/googleapis/gax-go/v2
-	parts := strings.SplitN(t.Package, "/", 4)
-	if len(parts) < 4 {
-		return "" // no package suffix
-	}
-	return parts[3]
-}
-
-func (t *Tuple) String() string {
-	if t.Source != nil && !t.Source.IsDefaultSite() {
-		return fmt.Sprintf("%s:%s:%s:%s:%s/%s/%s", t.Source.Site(), t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Subdir)
-	}
-	return fmt.Sprintf("%s:%s:%s:%s/%s/%s", t.Account, t.Project, t.Tag, t.Group, t.Prefix, t.Subdir)
-}
-
-func (t *Tuple) PostProcessTag(lookupGithubTag bool) error {
-	switch t.Source.(type) {
-	case GH:
-		if lookupGithubTag && strings.HasPrefix(t.Tag, "v") {
-			// Call Gihub API to check tags. Go seem to be able to magically
-			// translate tags like "v1.0.4" to the "api/v1.0.4", lets try to do the same.
-			tag, err := apis.LookupGithubTag(t.Account, t.Project, t.PackageSuffix(), t.Tag)
-			if err != nil {
-				return err
-			}
-			t.Tag = tag
+	if strings.Contains(spec, replaceSep) {
+		// "replace" spec
+		parts := strings.Split(spec, replaceSep)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("unexpected replace spec format: %q", spec)
 		}
-	case GL:
-		// Call Gitlab API to translate go.mod short commit IDs and tags
-		// to the full 40-character commit IDs as required by bsd.sites.mk
-		hash, err := apis.GetGitlabCommit(t.Source.Site(), t.Account, t.Project, t.Tag)
+
+		leftPkg, leftVersion, err := parseSpec(parts[0])
 		if err != nil {
-			return err
+			return nil, err
 		}
-		t.Tag = hash
-	}
-	return nil
-}
 
-func (t *Tuple) PostProcessSubdir() error {
-	if _, ok := t.Source.(GH); ok {
-		packageSuffix := t.PackageSuffix()
-		hasContentAtSuffix, err := apis.HasGithubContentsAtPath(t.Account, t.Project, packageSuffix, t.Tag)
+		rightPkg, rightVersion, err := parseSpec(parts[1])
 		if err != nil {
-			return err
-		}
-		if hasContentAtSuffix {
-			// Trim suffix from GH_TUPLE subdir because repo already has contents and it'll
-			// be extracted at the correct path.
-			t.Subdir = strings.TrimSuffix(t.Subdir, "/"+packageSuffix)
-		}
-	}
-	return nil
-}
-
-type Tuples []*Tuple
-
-// EnsureUnique returns a new Tuples slice with duplicates removed.
-// This function assumes that tt is pre-sorted in ByTupleString order.
-func (tt Tuples) EnsureUnique() Tuples {
-	if len(tt) < 2 {
-		return tt
-	}
-
-	var res Tuples
-	var prevTuple *Tuple
-
-	for _, t := range tt {
-		if prevTuple != nil && t.IsEqual(prevTuple) {
-			continue
-		}
-		res = append(res, t)
-		prevTuple = t
-	}
-	return res
-}
-
-// EnsureUniqueGroups makes sure all Group names are unique.
-// This function assumes that tt is pre-sorted in ByTupleString order.
-func (tt Tuples) EnsureUniqueGroups() {
-	if len(tt) < 2 {
-		return
-	}
-
-	var prevGroup string
-	suffix := 1
-
-	for _, t := range tt {
-		if prevGroup == "" {
-			prevGroup = t.Group
-			continue
-		}
-		if t.Group == prevGroup {
-			t.Group = fmt.Sprintf("%s_%d", t.Group, suffix)
-			suffix++
-		} else {
-			prevGroup = t.Group
-			suffix = 1
-		}
-	}
-}
-
-// EnsureUniqueGithubProjectAndTag checks that tuples have a unique GH_PROJECT/GH_TAGNAME
-// combination. Due to the way Github prepares release tarballs and the way port framework
-// works, tuples sharing GH_PROJECT/GH_TAGNAME pair will be extracted into the same directory.
-// Try avoiding this mess by switching one of the conflicting tuple's GH_TAGNAME from git tag
-// to git commit ID.
-// This function assumes that tt is pre-sorted in ByTupleString order.
-func (tt Tuples) EnsureUniqueGithubProjectAndTag() error {
-	if len(tt) < 2 {
-		return nil
-	}
-
-	var prevTuple *Tuple
-
-	for _, t := range tt {
-		if _, ok := t.Source.(GH); !ok {
-			// not a Github tuple, skip
-			continue
+			return nil, err
 		}
 
-		if prevTuple == nil {
-			prevTuple = t
-			continue
+		// https://github.com/golang/go/wiki/Modules#when-should-i-use-the-replace-directive
+		if isFilesystemPath(rightPkg) {
+			// get the left spec package and symlink it to the rightPkg path
+			return Resolve(leftPkg, leftVersion, leftPkg, rightPkg)
 		}
-
-		if t.Account != prevTuple.Account {
-			// different Account, but the same Project and Tag
-			if t.Project == prevTuple.Project && t.Tag == prevTuple.Tag {
-				hash, err := apis.GetGithubCommit(t.Account, t.Project, t.Tag)
-				if err != nil {
-					return DuplicateProjectAndTag(t.String())
-				}
-				if len(hash) < 12 {
-					return errors.New("unexpectedly short Githib commit hash")
-				}
-				t.Tag = hash[:12]
-			}
-		}
+		// get the right spec package and put it under leftPkg path
+		return Resolve(rightPkg, rightVersion, leftPkg, "")
 	}
 
-	return nil
-}
-
-type ByTupleString Tuples
-
-func (tt ByTupleString) Len() int {
-	return len(tt)
-}
-
-func (tt ByTupleString) Swap(i, j int) {
-	tt[i], tt[j] = tt[j], tt[i]
-}
-
-func (tt ByTupleString) Less(i, j int) bool {
-	return tt[i].String() < tt[j].String()
-}
-
-// If tuple contains more than largeLimit entries, start tuple list on the new line for easier sorting/editing.
-// Otherwise omit the first line continuation for more compact representation.
-const largeLimit = 3
-
-func (tt Tuples) String() string {
-	if len(tt) == 0 {
-		return ""
+	// regular spec
+	pkg, version, err := parseSpec(spec)
+	if err != nil {
+		return nil, err
 	}
-
-	tm := make(map[Source][]string)
-	for _, t := range tt {
-		tm[t.Source] = append(tm[t.Source], t.String())
-	}
-
-	var ss []string
-	for s, ee := range tm {
-		buf := bytes.NewBufferString(fmt.Sprintf("%s=\t", s.VarName()))
-		large := len(ee) > largeLimit
-		if large {
-			buf.WriteString("\\\n")
-		}
-		for i := 0; i < len(ee); i += 1 {
-			if i > 0 || large {
-				buf.WriteString("\t\t")
-			}
-			buf.WriteString(ee[i])
-			if i < len(ee)-1 {
-				buf.WriteString(" \\\n")
-			}
-		}
-		ss = append(ss, buf.String())
-	}
-	sort.Sort(sort.StringSlice(ss))
-
-	return fmt.Sprintf("%s\n", strings.Join(ss, "\n\n"))
-}
-
-type Errors struct {
-	Source                     []SourceError
-	ReplacementLocalFilesystem []ReplacementLocalFilesystemError
-	ReplacementMissingCommit   []ReplacementMissingCommitError
-	DuplicateProjectAndTag     []DuplicateProjectAndTag
-}
-
-func (ee Errors) Any() bool {
-	return len(ee.Source) > 0 ||
-		len(ee.ReplacementLocalFilesystem) > 0 ||
-		len(ee.ReplacementMissingCommit) > 0 ||
-		len(ee.DuplicateProjectAndTag) > 0
-}
-
-func (ee Errors) Error() string {
-	var buf bytes.Buffer
-
-	if len(ee.Source) > 0 {
-		buf.WriteString("\t\t# Mirrors for the following packages are not currently known, please look them up and handle these tuples manually:\n")
-		sort.Slice(ee.Source, func(i, j int) bool {
-			return ee.Source[i] < ee.Source[j]
-		})
-		for _, err := range ee.Source {
-			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
-		}
-	}
-
-	if len(ee.ReplacementMissingCommit) > 0 {
-		buf.WriteString("\t\t# The following replacement packages are missing version/commit ID, you may need to symlink them in post-patch:\n")
-		sort.Slice(ee.ReplacementMissingCommit, func(i, j int) bool {
-			return ee.ReplacementMissingCommit[i] < ee.ReplacementMissingCommit[j]
-		})
-		for _, err := range ee.ReplacementMissingCommit {
-			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
-		}
-	}
-
-	if len(ee.ReplacementLocalFilesystem) > 0 {
-		buf.WriteString("\t\t# The following replacement packages are referencing a local filesystem path, you may need to symlink them in post-patch:\n")
-		sort.Slice(ee.ReplacementLocalFilesystem, func(i, j int) bool {
-			return ee.ReplacementLocalFilesystem[i] < ee.ReplacementLocalFilesystem[j]
-		})
-		for _, err := range ee.ReplacementLocalFilesystem {
-			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
-		}
-	}
-
-	if len(ee.DuplicateProjectAndTag) > 0 {
-		buf.WriteString("\t\t# The following tuple has duplicate GH_PROJECT/GH_TAGNAME combinations and an attempt to fix it using Github API failed:\n")
-		sort.Slice(ee.DuplicateProjectAndTag, func(i, j int) bool {
-			return ee.DuplicateProjectAndTag[i] < ee.DuplicateProjectAndTag[j]
-		})
-		for _, err := range ee.DuplicateProjectAndTag {
-			buf.WriteString(fmt.Sprintf("\t\t#\t%s\n", string(err)))
-		}
-	}
-
-	return buf.String()
-}
-
-type SourceError string
-
-func (err SourceError) Error() string {
-	return string(err)
-}
-
-type ReplacementLocalFilesystemError string
-
-func (err ReplacementLocalFilesystemError) Error() string {
-	return string(err)
-}
-
-type ReplacementMissingCommitError string
-
-func (err ReplacementMissingCommitError) Error() string {
-	return string(err)
-}
-
-type DuplicateProjectAndTag string
-
-func (err DuplicateProjectAndTag) Error() string {
-	return string(err)
+	return Resolve(pkg, version, pkg, "")
 }
 
 // v1.0.0
@@ -324,159 +63,286 @@ var versionRx = regexp.MustCompile(`\A(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+[0-9A-Za-z\
 // v3.0.1-0.20190209023717-9147687966d9+incompatible
 var tagRx = regexp.MustCompile(`\Av\d+\.\d+\.\d+-(?:[0-9A-Za-z\.]+\.)?\d{14}-([0-9a-f]+)(?:\+incompatible)?\z`)
 
-// Parse parses a package spec into Tuple.
-func Parse(spec, subdirPrefix string) (*Tuple, error) {
-	t, err := parseReplaceSpec(spec, subdirPrefix)
-	if err != nil {
-		return nil, err
-	}
-	if t != nil {
-		// Tuple was parsed from a replace spec
-		return t, nil
-	}
-	return parseSpec(spec, subdirPrefix)
-}
+func parseSpec(spec string) (string, string, error) {
+	parts := strings.Fields(spec)
 
-func parseReplaceSpec(spec, subdirPrefix string) (*Tuple, error) {
-	const replaceOp = " => "
-
-	if !strings.Contains(spec, replaceOp) {
-		// Not a replace spec
-		return nil, nil
-	}
-
-	replaceSpecs := strings.Split(spec, replaceOp)
-	if len(replaceSpecs) != 2 {
-		return nil, fmt.Errorf("unexpected number of packages in replace spec: %q", spec)
-	}
-
-	var sourcePkg string
-
-	sourceFields := strings.Fields(replaceSpecs[0])
-	switch len(sourceFields) {
-	case 1, 2:
-		sourcePkg = sourceFields[0]
-	default:
-		return nil, fmt.Errorf("unexpected number of fields in the replace spec source: %q", spec)
-	}
-
-	targetFields := strings.Fields(replaceSpecs[1])
-	switch len(targetFields) {
+	switch len(parts) {
 	case 1:
-		if targetFields[0][0] == '.' || targetFields[0][0] == '/' {
-			// Target package spec is a local filesystem path
-			return nil, ReplacementLocalFilesystemError(spec)
+		// must be a versionless local filesystem "replace" spec rhs
+		if isFilesystemPath(parts[0]) {
+			return parts[0], "", nil
 		}
-		// Target package spec is missing commit ID/tag
-		return nil, ReplacementMissingCommitError(spec)
+		return "", "", fmt.Errorf("unexpected spec format: %q", spec)
 	case 2:
-		// OK
+		// regular spec
+		if tagRx.MatchString(parts[1]) {
+			sm := tagRx.FindAllStringSubmatch(parts[1], -1)
+			return parts[0], sm[0][1], nil
+		}
+		if versionRx.MatchString(parts[1]) {
+			sm := versionRx.FindAllStringSubmatch(parts[1], -1)
+			return parts[0], sm[0][1], nil
+		}
+		return "", "", fmt.Errorf("unexpected version string in spec: %q", spec)
 	default:
-		return nil, fmt.Errorf("unexpected number of fields in the replace spec target: %q", spec)
+		return "", "", fmt.Errorf("unexpected number of fields in spec: %q", spec)
 	}
-
-	t, err := parseSpec(replaceSpecs[1], subdirPrefix)
-	if err != nil {
-		return nil, err
-	}
-
-	// Keep the target package's account/project/tag but set the source package name and subdir
-	t.Package = sourcePkg
-	t.Subdir = sourcePkg
-
-	return t, nil
 }
 
-func parseSpec(spec, subdirPrefix string) (*Tuple, error) {
-	fields := strings.Fields(spec)
-	if len(fields) != 2 {
-		return nil, fmt.Errorf("unexpected number of fields: %q", spec)
-	}
-	pkg := fields[0]
-	version := fields[1]
+func isFilesystemPath(s string) bool {
+	return s[0] == '.' || s[0] == '/'
+}
 
-	pkgParsers := []func(string, string) (*Tuple, error){
-		tryMirror,
-		tryGithub,
-		tryGitlab,
-		tryVanity,
-		noMatch,
+type Tuple struct {
+	Package    string // Go package name
+	Version    string // tag or commit ID
+	Subdir     string // GH_TUPLE subdir
+	Link       string
+	LinkSuffix string
+	Source     Source // tuple source
+	Account    string // account
+	Project    string // project
+	Group      string // GH_TUPLE group
+	Submodule  string // submodule suffix if present
+}
+
+func (t *Tuple) IsResolved() bool {
+	return t.Source != nil
+}
+
+func (t *Tuple) IsLinked() bool {
+	return t.Link != ""
+}
+
+// func (t *Tuple) IsEqualTo(t2 *Tuple) bool {
+//     if t2 == nil {
+//         return false
+//     }
+//     return t.Source == t2.Source &&
+//         t.Account == t2.Account &&
+//         t.Project == t2.Project &&
+//         t.Version == t2.Version &&
+//         t.Subdir == t2.Subdir
+// }
+
+func (t *Tuple) Postprocess() error {
+	if config.Offline {
+		return nil
 	}
 
-	var t *Tuple
-	for _, fn := range pkgParsers {
-		var err error
-		t, err = fn(pkg, subdirPrefix)
+	// if isFilesystemPath(t.Subdir) {
+	//     fmt.Printf("====> fs %s %s %s %s\n", t.Package, t.Subdir, t.Submodule, t.Link)
+	// }
+	// if t.Link != "" {
+	//     fmt.Printf("====> %s %s %s %s\n", t.Package, t.Subdir, t.Submodule, t.Link)
+	// }
+	// if strings.Contains(t.Package, "azure/cli") {
+	//     fmt.Printf("====> before t %#v\n", t)
+	// }
+
+	switch t.Source.(type) {
+	case GithubSource:
+		// If package version is a tag and it's a submodule, call Gihub API to check tags.
+		// Go seem to be able to magically translate tags like "v1.0.4" to the "api/v1.0.4",
+		// lets try to do the same.
+		if strings.HasPrefix(t.Version, "v") && t.Submodule != "" {
+			tag, err := apis.GithubLookupTag(t.Account, t.Project, t.Submodule, t.Version)
+			if err != nil {
+				return err
+			}
+			t.Version = tag
+		}
+		// If package is a submodule, adjust GH_SUBDIR
+		// NOTE: tag translation has to be done before this
+		if t.Submodule != "" {
+			hasContentAtSuffix, err := apis.GithubHasContentsAtPath(t.Account, t.Project, t.Submodule, t.Version)
+			if err != nil {
+				return err
+			}
+			if hasContentAtSuffix {
+				// Trim suffix from GH_TUPLE subdir because repo already has contents and it'll
+				// be extracted at the correct path.
+				t.Subdir = strings.TrimSuffix(t.Subdir, "/"+t.Submodule)
+			}
+		}
+	case GitlabSource:
+		// Call Gitlab API to translate go.mod short commit IDs and tags
+		// to the full 40-character commit IDs as required by bsd.sites.mk
+		hash, err := apis.GitlabGetCommit(t.Source.String(), t.Account, t.Project, t.Version)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if t != nil {
-			break
-		}
+		t.Version = hash
 	}
 
-	switch {
-	case tagRx.MatchString(version):
-		sm := tagRx.FindAllStringSubmatch(version, -1)
-		t.Tag = sm[0][1]
-	case versionRx.MatchString(version):
-		sm := versionRx.FindAllStringSubmatch(version, -1)
-		t.Tag = sm[0][1]
-	default:
-		return nil, fmt.Errorf("unexpected version string: %q", version)
-	}
+	// if t.Link != "" {
+	//     fmt.Printf("====> %s %s %s %s\n", t.Package, t.Subdir, t.Submodule, t.Link)
+	// }
+	// if strings.Contains(t.Package, "azure/cli") {
+	//     fmt.Printf("====> after t %#v\n", t)
+	// }
 
-	if t.Source == nil {
-		return nil, SourceError(t.String())
-	}
-
-	return t, nil
+	return nil
 }
 
-func tryGithub(pkg, subdirPrefix string) (*Tuple, error) {
-	if !strings.HasPrefix(pkg, "github.com") {
-		return nil, nil
+func (t *Tuple) String() string {
+	var res string
+	if t.Source != nil && t.Source.String() != "" {
+		res = t.Source.String() + ":"
 	}
-	parts := strings.Split(pkg, "/")
-	if len(parts) < 3 {
-		return nil, fmt.Errorf("unexpected Github package name: %q", pkg)
-	}
-	return newTuple(GH{}, pkg, parts[1], parts[2], subdirPrefix), nil
-}
-
-func tryGitlab(pkg, subdirPrefix string) (*Tuple, error) {
-	if !strings.HasPrefix(pkg, "gitlab.com") {
-		return nil, nil
-	}
-	parts := strings.Split(pkg, "/")
-	if len(parts) < 3 {
-		return nil, fmt.Errorf("unexpected Gitlab package name: %q", pkg)
-	}
-	return newTuple(GL{}, pkg, parts[1], parts[2], subdirPrefix), nil
-}
-
-// noMatch returns "unparsed" tuple as a fallback.
-func noMatch(pkg, subdirPrefix string) (*Tuple, error) {
-	return newTuple(nil, pkg, "", "", subdirPrefix), nil
-}
-
-var groupRe = regexp.MustCompile(`[^\w]+`)
-
-func newTuple(source Source, pkg, account, project, subdirPrefix string) *Tuple {
-	t := &Tuple{
-		Source:  source,
-		Package: pkg,
-		Account: account,
-		Project: project,
-		Prefix:  subdirPrefix,
-		Subdir:  pkg,
-	}
-	if t.Account != "" && t.Project != "" {
-		group := t.Account + "_" + t.Project
-		group = groupRe.ReplaceAllString(group, "_")
-		t.Group = strings.ToLower(group)
+	res = fmt.Sprintf("%s%s:%s:%s:%s", res, t.Account, t.Project, t.Version, t.Group)
+	if t.IsLinked() {
+		res = fmt.Sprintf("%s/vendor/%s_%s", res, t.Subdir, t.LinkSuffix)
 	} else {
-		t.Group = "group_name"
+		res = fmt.Sprintf("%s/vendor/%s", res, t.Subdir)
 	}
-	return t
+	return res
+}
+
+func (t *Tuple) key() string {
+	return fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", t.Source, t.Account, t.Project, t.Submodule, t.Version, t.Group, t.Link)
+}
+
+type Slice []*Tuple
+
+// If tuple slice contains more than largeLimit entries, start tuple list on the new line for easier sorting/editing.
+// Otherwise omit the first line continuation for more compact representation.
+const largeLimit = 3
+
+func (s Slice) String() string {
+	sort.Slice(s, func(i, j int) bool {
+		return s[i].key() < s[j].key()
+	})
+
+	tm := make(map[Source][]string)
+	for _, t := range s {
+		tm[t.Source] = append(tm[t.Source], t.String())
+	}
+
+	var ss []string
+	for s, tt := range tm {
+		buf := bytes.NewBufferString(fmt.Sprintf("%s=\t", sourceVarName(s)))
+		large := len(tt) > largeLimit
+		if large {
+			buf.WriteString("\\\n")
+		}
+		for i := 0; i < len(tt); i += 1 {
+			if i > 0 || large {
+				buf.WriteString("\t\t")
+			}
+			buf.WriteString(tt[i])
+			if i < len(tt)-1 {
+				buf.WriteString(" \\\n")
+			}
+		}
+		ss = append(ss, buf.String())
+	}
+	// sort.Sort(sort.StringSlice(ss))
+
+	return strings.Join(ss, "\n\n")
+}
+
+func (s Slice) Postprocess() error {
+	if len(s) < 2 {
+		return nil
+	}
+
+	sort.Slice(s, func(i, j int) bool {
+		return s[i].key() < s[j].key()
+	})
+
+	// ensureUnique(s)
+	ensureUniqueGroups(s)
+	if err := ensureUniqueGithubProjectAndTag(s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// // EnsureUnique returns a new Tuples slice with duplicates removed.
+// // This function assumes that s is pre-sorted in key() order.
+// func  ensureUnique(s Slice) Slice {
+//     if len(s) < 2 {
+//         return s
+//     }
+//
+//     var res Slice
+//     var prevTuple *Tuple
+//
+//     for _, t := range s {
+//         if prevTuple != nil && t.IsEqualTo(prevTuple) {
+//             continue
+//         }
+//         res = append(res, t)
+//         prevTuple = t
+//     }
+//     return res
+// }
+
+// ensureUniqueGroups makes sure all Group names are unique.
+// This function assumes that s is pre-sorted in key() order.
+func ensureUniqueGroups(s Slice) {
+	var prevGroup string
+	suffix := 1
+
+	for _, t := range s {
+		if prevGroup == "" {
+			prevGroup = t.Group
+			continue
+		}
+		if t.Group == prevGroup {
+			t.Group = fmt.Sprintf("%s_%d", t.Group, suffix)
+			suffix++
+		} else {
+			prevGroup = t.Group
+			suffix = 1
+		}
+	}
+}
+
+type DuplicateProjectAndTag string
+
+func (err DuplicateProjectAndTag) Error() string {
+	return string(err)
+}
+
+// ensureUniqueGithubProjectAndTag checks that tuples have a unique GH_PROJECT/GH_TAGNAME
+// combination. Due to the way Github prepares release tarballs and the way port framework
+// works, tuples sharing GH_PROJECT/GH_TAGNAME pair will be extracted into the same directory.
+// Try avoiding this mess by switching one of the conflicting tuple's GH_TAGNAME from git tag
+// to git commit ID.
+// This function assumes that s is pre-sorted in key() order.
+func ensureUniqueGithubProjectAndTag(s Slice) error {
+	if config.Offline {
+		return nil
+	}
+
+	var prevTuple *Tuple
+
+	for _, t := range s {
+		if t.Source != GH {
+			continue // not a Github tuple, skip
+		}
+
+		if prevTuple == nil {
+			prevTuple = t
+			continue
+		}
+
+		if t.Account != prevTuple.Account {
+			// different Account, but the same Project and Tag
+			if t.Project == prevTuple.Project && t.Version == prevTuple.Version {
+				hash, err := apis.GithubGetCommit(t.Account, t.Project, t.Version)
+				if err != nil {
+					return DuplicateProjectAndTag(t.String())
+				}
+				if len(hash) < 12 {
+					return errors.New("unexpectedly short Githib commit hash")
+				}
+				t.Version = hash[:12]
+			}
+		}
+	}
+
+	return nil
 }

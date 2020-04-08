@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/dmgk/modules2tuple/flags"
+	"github.com/dmgk/modules2tuple/config"
 )
 
 type GithubCommit struct {
@@ -23,15 +23,13 @@ var githubRateLimitError = fmt.Sprintf(`Github API rate limit exceeded. Please e
   to let modules2tuple call Github API using basic authentication.
   To create a new token, navigate to https://github.com/settings/tokens/new
   (leave all checkboxes unchecked, modules2tuple doesn't need any access to your account)
-- set %s=0 and/or remove "-ghtags" flag to turn off Github tags lookup
 - set %s=1 or pass "-offline" flag to module2tuple to disable network access`,
-	flags.GithubCredentialsKey, flags.LookupGithubTagsKey, flags.OfflineKey)
+	config.GithubCredentialsKey, config.OfflineKey)
 
-func GetGithubCommit(account, project, tag string) (string, error) {
-	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
-	url := fmt.Sprintf("https://api.github.com/repos/%s/commits/%s", projectID, tag)
+func GithubGetCommit(account, project, tag string) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits/%s", url.PathEscape(account), url.PathEscape(project), tag)
 
-	resp, err := get(url, flags.GithubCredentialsKey)
+	resp, err := get(url, config.GithubUsername, config.GithubToken)
 	if err != nil {
 		if strings.Contains(err.Error(), "API rate limit exceeded") {
 			return "", errors.New(githubRateLimitError)
@@ -47,11 +45,10 @@ func GetGithubCommit(account, project, tag string) (string, error) {
 	return res.SHA, nil
 }
 
-func HasGithubTag(account, project, tag string) (bool, error) {
-	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
-	url := fmt.Sprintf("https://api.github.com/repos/%s/git/refs/tags/%s", projectID, tag)
+func GithubHasTag(account, project, tag string) (bool, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", url.PathEscape(account), url.PathEscape(project), tag)
 
-	resp, err := get(url, flags.GithubCredentialsKey)
+	resp, err := get(url, config.GithubUsername, config.GithubToken)
 	if err != nil {
 		if err == errNotFound {
 			return false, nil
@@ -70,11 +67,10 @@ func HasGithubTag(account, project, tag string) (bool, error) {
 	return true, nil
 }
 
-func ListGithubTags(account, project, tag string) ([]string, error) {
-	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
-	url := fmt.Sprintf("https://api.github.com/repos/%s/git/refs/tags", projectID)
+func GithubListTags(account, project, tag string) ([]string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags", url.PathEscape(account), url.PathEscape(project))
 
-	resp, err := get(url, flags.GithubCredentialsKey)
+	resp, err := get(url, config.GithubUsername, config.GithubToken)
 	if err != nil {
 		if strings.Contains(err.Error(), "API rate limit exceeded") {
 			return nil, errors.New(githubRateLimitError)
@@ -95,8 +91,8 @@ func ListGithubTags(account, project, tag string) ([]string, error) {
 	return res, nil
 }
 
-func LookupGithubTag(account, project, path, tag string) (string, error) {
-	hasTag, err := HasGithubTag(account, project, tag)
+func GithubLookupTag(account, project, path, tag string) (string, error) {
+	hasTag, err := GithubHasTag(account, project, tag)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +103,7 @@ func LookupGithubTag(account, project, path, tag string) (string, error) {
 	}
 
 	// tag was not found, try to look it up
-	allTags, err := ListGithubTags(account, project, tag)
+	allTags, err := GithubListTags(account, project, tag)
 	if err != nil {
 		return "", err
 	}
@@ -123,12 +119,11 @@ func LookupGithubTag(account, project, path, tag string) (string, error) {
 	return "", fmt.Errorf("tag %v doesn't seem to exist in %s/%s", tag, account, project)
 }
 
-func HasGithubContentsAtPath(account, project, path, tag string) (bool, error) {
-	projectID := fmt.Sprintf("%s/%s", url.PathEscape(account), url.PathEscape(project))
-	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s?ref=%s", projectID, path, tag)
+func GithubHasContentsAtPath(account, project, path, tag string) (bool, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s?ref=%s", url.PathEscape(account), url.PathEscape(project), path, tag)
 
 	// Ignore reponse, we care only about errors
-	_, err := get(url, flags.GithubCredentialsKey)
+	_, err := get(url, config.GithubUsername, config.GithubToken)
 	if err != nil && err != errNotFound {
 		return false, err
 	}

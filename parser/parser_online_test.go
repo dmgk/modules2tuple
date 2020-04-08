@@ -1,6 +1,6 @@
 // +build online
 
-package tuple
+package parser
 
 import (
 	"strings"
@@ -13,10 +13,9 @@ func TestUniqueProjectAndTag(t *testing.T) {
 # github.com/ugorji/go v1.1.7`
 
 	expected := `GH_TUPLE=	json-iterator:go:v1.1.7:json_iterator_go/vendor/github.com/json-iterator/go \
-		ugorji:go:23ab95ef5dc3:ugorji_go/vendor/github.com/ugorji/go
-`
+		ugorji:go:23ab95ef5dc3:ugorji_go/vendor/github.com/ugorji/go`
 
-	tt, err := NewParser("vendor", false, true).Read(strings.NewReader(given))
+	tt, err := Read(strings.NewReader(given))
 	if err != nil {
 		t.Fatal(err)
 	}

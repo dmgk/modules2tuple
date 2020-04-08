@@ -4,7 +4,7 @@ package apis
 
 import "testing"
 
-func TestGetGitlabCommit(t *testing.T) {
+func TestGitlabGetCommit(t *testing.T) {
 	examples := []struct {
 		site, account, project, ref, hash string
 	}{
@@ -13,7 +13,7 @@ func TestGetGitlabCommit(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		hash, err := GetGitlabCommit(x.site, x.account, x.project, x.ref)
+		hash, err := GitlabGetCommit(x.site, x.account, x.project, x.ref)
 		if err != nil {
 			t.Fatal(err)
 		}

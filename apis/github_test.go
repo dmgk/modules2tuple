@@ -4,7 +4,7 @@ package apis
 
 import "testing"
 
-func TestGetGithubCommit(t *testing.T) {
+func TestGithubGetCommit(t *testing.T) {
 	examples := []struct {
 		account, project, ref, hash string
 	}{
@@ -13,7 +13,7 @@ func TestGetGithubCommit(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		hash, err := GetGithubCommit(x.account, x.project, x.ref)
+		hash, err := GithubGetCommit(x.account, x.project, x.ref)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -23,7 +23,7 @@ func TestGetGithubCommit(t *testing.T) {
 	}
 }
 
-func TestLookupGithubTag(t *testing.T) {
+func TestGithubLookupTag(t *testing.T) {
 	examples := []struct {
 		account, project, packageSuffix, given, expected string
 	}{
@@ -37,7 +37,7 @@ func TestLookupGithubTag(t *testing.T) {
 	}
 
 	for i, x := range examples {
-		tag, err := LookupGithubTag(x.account, x.project, x.packageSuffix, x.given)
+		tag, err := GithubLookupTag(x.account, x.project, x.packageSuffix, x.given)
 		if err != nil {
 			t.Fatal(err)
 		}

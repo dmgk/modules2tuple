@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dmgk/modules2tuple/flags"
-	"github.com/dmgk/modules2tuple/tuple"
+	"github.com/dmgk/modules2tuple/config"
+	"github.com/dmgk/modules2tuple/parser"
 )
 
 var version = "devel"
@@ -14,7 +14,7 @@ var version = "devel"
 func main() {
 	flag.Parse()
 
-	if flags.ShowVersion {
+	if config.ShowVersion {
 		fmt.Fprintln(os.Stderr, version)
 		os.Exit(0)
 	}
@@ -26,18 +26,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	var haveTuples bool
-	parser := tuple.NewParser(flags.PackagePrefix, flags.Offline, flags.LookupGithubTags)
-	tuples, errors := parser.Load(args[0])
-	if len(tuples) != 0 {
-		fmt.Print(tuples)
-		haveTuples = true
+	res, err := parser.Load(args[0])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	if errors != nil {
-		if haveTuples {
-			fmt.Println()
-		}
-		fmt.Print(errors)
-		fmt.Println()
-	}
+	fmt.Println(res)
 }
