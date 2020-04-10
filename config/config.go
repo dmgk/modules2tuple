@@ -11,12 +11,14 @@ import (
 const (
 	GithubCredentialsKey = "M2T_GITHUB"
 	OfflineKey           = "M2T_OFFLINE"
+	DebugKey             = "M2T_DEBUG"
 )
 
 var (
 	GithubUsername string
 	GithubToken    string
 	Offline        = os.Getenv(OfflineKey) == "1"
+	Debug          = os.Getenv(DebugKey) != ""
 	ShowVersion    = false
 )
 
@@ -38,6 +40,7 @@ When running in offline mode:
     - Github tags for submodules ("v1.2.3" vs "api/v1.2.3") are not automatically
       resolved
     - Gitlab commit IDs are not resolved to the full 40-char IDs
+	- post-extract target is not generated
 `))
 
 func init() {
@@ -53,6 +56,7 @@ func init() {
 	}
 
 	flag.BoolVar(&Offline, "offline", Offline, "")
+	flag.BoolVar(&Debug, "debug", Debug, "")
 	flag.BoolVar(&ShowVersion, "v", false, "")
 
 	flag.Usage = func() {

@@ -11,14 +11,15 @@ import (
 
 	"github.com/dmgk/modules2tuple/apis"
 	"github.com/dmgk/modules2tuple/config"
+	"github.com/dmgk/modules2tuple/debug"
 )
 
 // Parse parses a package spec into Tuple.
 func Parse(spec string) (*Tuple, error) {
 	const replaceSep = " => "
 
+	// "replace" spec
 	if strings.Contains(spec, replaceSep) {
-		// "replace" spec
 		parts := strings.Split(spec, replaceSep)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("unexpected replace spec format: %q", spec)
@@ -95,210 +96,170 @@ func isFilesystemPath(s string) bool {
 }
 
 type Tuple struct {
-	Package   string // Go package name
-	Version   string // tag or commit ID
-	Subdir    string // GH_TUPLE subdir
-	Link      string // path to symlink to
-	Source    Source // tuple source
-	Account   string // account
-	Project   string // project
-	Group     string // GH_TUPLE group
-	Submodule string // submodule suffix if present
-
-	// LinkSuffix string
+	pkg       string // Go package name
+	version   string // tag or commit ID
+	subdir    string // GH_TUPLE subdir
+	group     string // GH_TUPLE group
+	submodule string // submodule, if any
+	link      string // symlink target, if any
+	source    Source // tuple source (Github ot Gitlab)
+	account   string // source account
+	project   string // source project
+	hidden    bool
 }
 
 var underscoreRe = regexp.MustCompile(`[^\w]+`)
 
-func (t *Tuple) resolve(source Source, account, project, submodule string) {
-	t.Source = source
-	t.Account = account
-	t.Project = project
-	t.Submodule = submodule
+func (t *Tuple) makeResolved(source Source, account, project, submodule string) {
+	t.source = source
+	t.account = account
+	t.project = project
+	t.submodule = submodule
 
 	var submoduleBase string
-	if t.Submodule != "" {
-		submoduleBase = filepath.Base(t.Submodule)
+	if t.submodule != "" {
+		submoduleBase = filepath.Base(t.submodule)
 	}
-	// if t.Link != "" {
-	//     linkBase = filepath.Base(t.Link)
-	// }
 
-	group := t.Account + "_" + t.Project
+	group := t.account + "_" + t.project
 	if submoduleBase != "" {
 		group = group + "_" + submoduleBase
 	}
 	group = underscoreRe.ReplaceAllString(group, "_")
 	group = strings.Trim(group, "_")
-	t.Group = strings.ToLower(group)
-
-	// linkSuffix := underscoreRe.ReplaceAllString(linkBase, "_")
-	// linkSuffix = strings.Trim(linkSuffix, "_")
-	// t.LinkSuffix = strings.ToLower(linkSuffix)
+	t.group = strings.ToLower(group)
 }
 
 func (t *Tuple) isResolved() bool {
-	return t.Source != nil
+	return t.source != nil
 }
 
-func (t *Tuple) isLinked() bool {
-	return t.Link != ""
-}
-
-func (t *Tuple) Postprocess() error {
+func (t *Tuple) Fix() error {
 	if config.Offline {
 		return nil
 	}
 
-	// if isFilesystemPath(t.Subdir) {
-	//     fmt.Printf("====> fs %s %s %s %s\n", t.Package, t.Subdir, t.Submodule, t.Link)
-	// }
-	// if t.Link != "" {
-	//     fmt.Printf("====> %s %s %s %s\n", t.Package, t.Subdir, t.Submodule, t.Link)
-	// }
-	// if strings.Contains(t.Package, "azure/cli") {
-	//     fmt.Printf("====> before t %#v\n", t)
-	// }
-
-	// if strings.Contains(t.Package, "autorest") || strings.Contains(t.Package, "vault") {
-	//     fmt.Printf("====> before %s %s %s %s\n", t.Package, t.Subdir, t.Submodule, t.Link)
-	// }
-
-	switch t.Source.(type) {
+	switch t.source.(type) {
 	case GithubSource:
 		// If package version is a tag and it's a submodule, call Gihub API to check tags.
 		// Go seem to be able to magically translate tags like "v1.0.4" to the "api/v1.0.4",
 		// lets try to do the same.
-		if strings.HasPrefix(t.Version, "v") && t.Submodule != "" {
-			tag, err := apis.GithubLookupTag(t.Account, t.Project, t.Submodule, t.Version)
+		if strings.HasPrefix(t.version, "v") && t.submodule != "" {
+			tag, err := apis.GithubLookupTag(t.account, t.project, t.submodule, t.version)
 			if err != nil {
 				return err
 			}
-			t.Version = tag
+			if t.version != tag {
+				debug.Printf("[tuple.Fix] translated Github tag %q to %q\n", t.version, tag)
+				t.version = tag
+			}
 		}
 		// If package is a submodule, adjust GH_SUBDIR
 		// NOTE: tag translation has to be done before this
-		if t.Submodule != "" {
-			hasContentAtSuffix, err := apis.GithubHasContentsAtPath(t.Account, t.Project, t.Submodule, t.Version)
+		if t.submodule != "" {
+			hasContentAtSuffix, err := apis.GithubHasContentsAtPath(t.account, t.project, t.submodule, t.version)
 			if err != nil {
 				return err
 			}
 			if hasContentAtSuffix {
 				// Trim suffix from GH_TUPLE subdir because repo already has contents and it'll
 				// be extracted at the correct path.
-				t.Subdir = strings.TrimSuffix(t.Subdir, "/"+t.Submodule)
+				debug.Printf("[tuple.Fix] trimmed submodule suffix %q from %q\n", t.submodule, t.subdir)
+				t.subdir = strings.TrimSuffix(t.subdir, "/"+t.submodule)
 			}
+		}
+		// Ports framework doesn't understand tags that have more than 2 path separators in it,
+		// replace by commit ID
+		if len(strings.Split(t.version, "/")) > 2 {
+			hash, err := apis.GithubGetCommit(t.account, t.project, t.version)
+			if err != nil {
+				return err
+			}
+			if len(hash) < 12 {
+				return errors.New("unexpectedly short Githib commit hash")
+			}
+			debug.Printf("[tuple.Fix] translated Github tag %q to %q\n", t.version, hash[:12])
+			t.version = hash[:12]
 		}
 	case GitlabSource:
 		// Call Gitlab API to translate go.mod short commit IDs and tags
 		// to the full 40-character commit IDs as required by bsd.sites.mk
-		hash, err := apis.GitlabGetCommit(t.Source.String(), t.Account, t.Project, t.Version)
+		hash, err := apis.GitlabGetCommit(t.source.String(), t.account, t.project, t.version)
 		if err != nil {
 			return err
 		}
-		t.Version = hash
+		debug.Printf("[tuple.Fix] translated Gitlab tag %q to %q\n", t.version, hash)
+		t.version = hash
 	}
-
-	// if t.Link != "" {
-	//     fmt.Printf("====> %s %s %s %s\n", t.Package, t.Subdir, t.Submodule, t.Link)
-	// }
-	// if strings.Contains(t.Package, "azure/cli") {
-	//     fmt.Printf("====> after t %#v\n", t)
-	// }
-
-	// if strings.Contains(t.Package, "autorest") || strings.Contains(t.Package, "vault") {
-	//     fmt.Printf("====> after %s subdir:%s submodule:%s link:%s\n", t.Package, t.Subdir, t.Submodule, t.Link)
-	// }
 
 	return nil
 }
 
 func (t *Tuple) subdirPath() string {
-	if t.Subdir == "" {
+	if t.subdir == "" {
 		return ""
 	}
 	if t.isLinked() {
-		return t.Subdir
+		return t.subdir
 	}
-	return filepath.Join("vendor", t.Subdir)
+	return filepath.Join("vendor", t.subdir)
 }
 
-// func (t *Tuple) linkPath() string {
-//     if t.Link == "" {
-//         return ""
-//     }
-//     fmt.Printf("====> link1 %#v\n", t.Link)
-//     if isFilesystemPath(t.Link) {
-//         fmt.Printf("====> link2 %#v\n", t.Link)
-//         // return filepath.Join(t.Link, t.Submodule)
-//         return t.Link
-//     }
-//     return filepath.Join("vendor", t.Link)
-// }
-
-func (t *Tuple) doLink() {
-	if t.Link == "" {
-		t.Link = filepath.Join("vendor", t.Subdir, t.Submodule)
-	}
-	// t.Subdir = t.Group
-	t.Subdir = ""
+func (t *Tuple) isLinked() bool {
+	return t.link != ""
 }
 
-// func (t *Tuple) LinkSuffix() string {
-//     var linkBase string
-//     if t.Link != "" {
-//         linkBase = filepath.Base(t.Link)
-//     }
-//     res := underscoreRe.ReplaceAllString(linkBase, "_")
-//     res = strings.Trim(res, "_")
-//     return strings.ToLower(res)
-// }
+func (t *Tuple) makeLinked() {
+	if !t.isLinked() {
+		t.link = filepath.Join("vendor", t.subdir, t.submodule)
+	}
+	t.subdir = ""
+}
 
 func (t *Tuple) String() string {
 	var res string
-	if t.Source != nil && t.Source.String() != "" {
-		res = t.Source.String() + ":"
+
+	if t.source != nil && t.source.String() != "" {
+		res = t.source.String() + ":"
 	}
-	// res = fmt.Sprintf("%s%s:%s:%s:%s/%s", res, t.Account, t.Project, t.Version, t.Group, t.Subdir)
-	res = fmt.Sprintf("%s%s:%s:%s:%s", res, t.Account, t.Project, t.Version, t.Group)
+	res = fmt.Sprintf("%s%s:%s:%s:%s", res, t.account, t.project, t.version, t.group)
 	if t.subdirPath() != "" {
 		res = fmt.Sprintf("%s/%s", res, t.subdirPath())
 	}
-	if t.Link != "" {
-		// res = fmt.Sprintf("%s ==> %s", res, t.linkPath())
-		res = fmt.Sprintf("%s ==> %s", res, t.Link)
-	}
+	// if t.isLinked() {
+	//     res = fmt.Sprintf("%s ==> %s", res, t.Link)
+	// }
+
 	return res
 }
 
-func (t *Tuple) sortKey() string {
-	return fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", t.Source, t.Account, t.Project, t.Version, t.Submodule, t.Group, t.Link)
+func (t *Tuple) defaultSortKey() string {
+	return fmt.Sprintf("%s %s %s %s %s %s %s", t.source, t.account, t.project, t.version, t.submodule, t.group, t.link)
 }
 
 type Slice []*Tuple
 
-func (s Slice) Postprocess() error {
+func (s Slice) Fix() error {
 	if len(s) < 2 {
 		return nil
 	}
 
-	ensureUniqueGroups(s)
-	if err := ensureUniqueGithubProjectAndTag(s); err != nil {
+	fixGroups(s)
+	if err := fixGithubProjectsAndTags(s); err != nil {
 		return err
 	}
-	ensureUniqueSubdirs(s)
+	fixSubdirs(s)
 
 	return nil
 }
 
-// ensureUniqueGroups makes sure there are no duplicate group names.
-// This function assumes that s is pre-sorted in sortKey() order.
-func ensureUniqueGroups(s Slice) {
+// fixGroups makes sure there are no duplicate group names.
+func fixGroups(s Slice) {
 	var prevGroup string
 	suffix := 1
 
 	key := func(i int) string {
-		return s[i].Group
+		return fmt.Sprintf("%s %s", s[i].group, s[i].subdir)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
@@ -306,14 +267,15 @@ func ensureUniqueGroups(s Slice) {
 
 	for _, t := range s {
 		if prevGroup == "" {
-			prevGroup = t.Group
+			prevGroup = t.group
 			continue
 		}
-		if t.Group == prevGroup {
-			t.Group = fmt.Sprintf("%s_%d", t.Group, suffix)
+		if t.group == prevGroup {
+			t.group = fmt.Sprintf("%s_%d", t.group, suffix)
+			debug.Printf("[fixGroups] deduped group as %q\n", t.group)
 			suffix++
 		} else {
-			prevGroup = t.Group
+			prevGroup = t.group
 			suffix = 1
 		}
 	}
@@ -325,19 +287,18 @@ func (err DuplicateProjectAndTag) Error() string {
 	return string(err)
 }
 
-// ensureUniqueGithubProjectAndTag checks that tuples have a unique GH_PROJECT/GH_TAGNAME
+// fixGithubProjectsAndTags checks that tuples have a unique GH_PROJECT/GH_TAGNAME
 // combination. Due to the way Github prepares release tarballs and the way port framework
 // works, tuples sharing GH_PROJECT/GH_TAGNAME pair will be extracted into the same directory.
 // Try avoiding this mess by switching one of the conflicting tuple's GH_TAGNAME from git tag
 // to git commit ID.
-// This function assumes that s is pre-sorted in sortKey() order.
-func ensureUniqueGithubProjectAndTag(s Slice) error {
+func fixGithubProjectsAndTags(s Slice) error {
 	if config.Offline {
 		return nil
 	}
 
 	key := func(i int) string {
-		return fmt.Sprintf("%T:%s:%s:%s", s[i].Source, s[i].Account, s[i].Project, s[i].Version)
+		return fmt.Sprintf("%T %s %s %s", s[i].source, s[i].account, s[i].project, s[i].version)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
@@ -346,7 +307,7 @@ func ensureUniqueGithubProjectAndTag(s Slice) error {
 	var prevTuple *Tuple
 
 	for _, t := range s {
-		if t.Source != GH {
+		if t.source != GH {
 			continue // not a Github tuple, skip
 		}
 
@@ -355,17 +316,18 @@ func ensureUniqueGithubProjectAndTag(s Slice) error {
 			continue
 		}
 
-		if t.Account != prevTuple.Account {
+		if t.account != prevTuple.account {
 			// different Account, same Project and Version
-			if t.Project == prevTuple.Project && t.Version == prevTuple.Version {
-				hash, err := apis.GithubGetCommit(t.Account, t.Project, t.Version)
+			if t.project == prevTuple.project && t.version == prevTuple.version {
+				hash, err := apis.GithubGetCommit(t.account, t.project, t.version)
 				if err != nil {
 					return DuplicateProjectAndTag(t.String())
 				}
 				if len(hash) < 12 {
 					return errors.New("unexpectedly short Githib commit hash")
 				}
-				t.Version = hash[:12]
+				debug.Printf("[fixGithubProjectsAndTags] translated Github tag %q to %q\n", t.version, hash[:12])
+				t.version = hash[:12]
 			}
 		}
 	}
@@ -373,43 +335,47 @@ func ensureUniqueGithubProjectAndTag(s Slice) error {
 	return nil
 }
 
-func ensureUniqueSubdirs(s Slice) error {
+// fixSubdirs ensures that all subdirs are unique and makes symlinks as needed.
+func fixSubdirs(s Slice) {
 	key := func(i int) string {
-		return s[i].Subdir
+		return fmt.Sprintf("%-50s %20s %-30s", s[i].subdir, s[i].version, s[i].submodule)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
 	})
 
+	if config.Debug {
+		debug.Print("[fixSubdirs] sorted slice dump:\n")
+		for i := range s {
+			debug.Printf("    %s\n", key(i))
+		}
+	}
+
 	var (
-		prevSubdir string
-		prevTuple  *Tuple
+		prevSubdir, prevVersion       string
+		currentSubdir, currentVersion string
 	)
 
 	for _, t := range s {
 		if prevSubdir == "" {
-			prevSubdir = t.Subdir
-			prevTuple = t
+			prevSubdir, prevVersion = t.subdir, t.version
 			continue
 		}
 
-		if t.Subdir == prevSubdir {
-			if prevTuple != nil {
-				// prevTuple.Link = filepath.Join(prevTuple.Subdir, prevTuple.Submodule)
-				// prevTuple.Subdir = prevTuple.Group // prevTuple.Subdir + "_" + prevTuple.LinkSuffix()
-				prevTuple.doLink()
-				prevTuple = nil
+		currentSubdir, currentVersion = t.subdir, t.version
+		if prevSubdir == t.subdir {
+			if t.version != prevVersion {
+				debug.Printf("[fixSubdirs] linking %s/%s@%s (parent %s@%s)\n", t.pkg, t.submodule, t.version, prevSubdir, prevVersion)
+				t.makeLinked()
+			} else {
+				debug.Printf("[fixSubdirs] hiding %s/%s@%s (parent %s@%s)\n", t.pkg, t.submodule, t.version, prevSubdir, prevVersion)
+				t.hidden = true
 			}
-			// t.Link = filepath.Join(t.Subdir, t.Submodule)
-			// t.Subdir = t.Group // t.Subdir + "_" + t.LinkSuffix()
-			t.doLink()
 		} else {
-			prevSubdir = t.Subdir
-			prevTuple = t
+			prevSubdir = t.subdir
 		}
+		prevSubdir, prevVersion = currentSubdir, currentVersion
 	}
-
-	return nil
 }
 
 // If tuple slice contains more than largeLimit entries, start tuple list on the new line for easier sorting/editing.
@@ -418,26 +384,39 @@ const largeLimit = 3
 
 func (s Slice) String() string {
 	sort.Slice(s, func(i, j int) bool {
-		return s[i].sortKey() < s[j].sortKey()
+		return s[i].defaultSortKey() < s[j].defaultSortKey()
 	})
 
-	mapBySource := make(map[Source][]string)
+	var githubTuples, gitlabTuples Slice
 	for _, t := range s {
-		mapBySource[t.Source] = append(mapBySource[t.Source], t.String())
+		switch t.source.(type) {
+		case GithubSource:
+			githubTuples = append(githubTuples, t)
+		case GitlabSource:
+			gitlabTuples = append(gitlabTuples, t)
+		default:
+			panic("unknown source type")
+		}
 	}
 
 	var lines []string
-	for s, tt := range mapBySource {
-		buf := bytes.NewBufferString(fmt.Sprintf("%s=\t", sourceVarName(s)))
+	for _, tt := range []Slice{githubTuples, gitlabTuples} {
+		if len(tt) == 0 {
+			continue
+		}
+		buf := bytes.NewBufferString(fmt.Sprintf("%s=\t", sourceVarName(tt[0].source)))
 		large := len(tt) > largeLimit
 		if large {
 			buf.WriteString("\\\n")
 		}
 		for i := 0; i < len(tt); i += 1 {
+			if tt[i].hidden {
+				continue
+			}
 			if i > 0 || large {
 				buf.WriteString("\t\t")
 			}
-			buf.WriteString(tt[i])
+			buf.WriteString(tt[i].String())
 			if i < len(tt)-1 {
 				buf.WriteString(" \\\n")
 			}
@@ -448,37 +427,66 @@ func (s Slice) String() string {
 	return strings.Join(lines, "\n\n")
 }
 
-func (s Slice) PostExtract() string {
-	var links Slice
+type Links []*Tuple
+
+func (s Slice) Links() Links {
+	var res Links
+
 	for _, t := range s {
 		if t.isLinked() {
-			links = append(links, t)
+			res = append(res, t)
 		}
 	}
-	if len(links) == 0 {
-		return ""
-	}
-
 	key := func(i int) string {
-		return links[i].Link
+		return res[i].link
 	}
-	sort.Slice(links, func(i, j int) bool {
+	sort.Slice(res, func(i, j int) bool {
 		return key(i) < key(j)
 	})
 
-	var lines []string
-	dirs := map[string]struct{}{}
+	return res
+}
 
-	for _, l := range links {
+// String generates "post-extract" target that creates required symlinks.
+func (l Links) String() string {
+	// Skip when offline, the result will be most likely wrong.
+	if config.Offline {
+		return ""
+	}
+
+	if len(l) == 0 {
+		return ""
+	}
+
+	var lines []string
+	// dirs := map[string]struct{}{}
+
+	for _, t := range l {
+		if t.hidden {
+			continue
+		}
+
 		var b bytes.Buffer
 
-		dir := filepath.Dir(l.Link)
-		if _, ok := dirs[dir]; !ok {
-			b.WriteString(fmt.Sprintf("\t@${MKDIR} %s\n", filepath.Join("${WRKSRC}", dir)))
-			dirs[dir] = struct{}{}
-		}
-		b.WriteString(fmt.Sprintf("\t@${RLN} ${WRKSRC_%s} %s", l.Group, filepath.Join("${WRKSRC}", l.Link)))
-		dirs[l.Link] = struct{}{}
+		// dir := filepath.Dir(t.Link)
+		// if dir != "" && dir != "." {
+		//     if _, ok := dirs[dir]; !ok {
+		//         b.WriteString(fmt.Sprintf("\t@${MKDIR} %s\n", filepath.Join("${WRKSRC}", dir)))
+		//         dirs[dir] = struct{}{}
+		//     }
+		// }
+
+		src := filepath.Join(fmt.Sprintf("${WRKSRC_%s}", t.group), t.submodule)
+		tgt := filepath.Join("${WRKSRC}", t.link)
+		tgtdir := filepath.Dir(tgt)
+
+		debug.Printf("[links.String] rm %s\n", tgt)
+		b.WriteString(fmt.Sprintf("\t@${RM} -r %s\n", tgt))
+
+		debug.Printf("[links.String] ln %s => %s\n", src, tgtdir)
+		b.WriteString(fmt.Sprintf("\t@${RLN} %s %s", src, tgtdir))
+
+		// dirs[t.Link] = struct{}{}
 
 		lines = append(lines, b.String())
 	}

@@ -36,4 +36,5 @@ To install latest dev version directly from GitHub:
         - Github tags for submodules ("v1.2.3" vs "api/v1.2.3") are not automatically
           resolved
         - Gitlab commit IDs are not resolved to the full 40-char IDs
+        - post-extract target is not generated
 

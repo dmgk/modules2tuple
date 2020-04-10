@@ -14,11 +14,11 @@ func (err SourceError) Error() string {
 
 func Resolve(pkg, version, subdir, link string) (*Tuple, error) {
 	t := &Tuple{
-		Package: pkg,
-		Version: version,
-		Subdir:  subdir,
-		Link:    link,
-		Group:   "group_name",
+		pkg:     pkg,
+		version: version,
+		subdir:  subdir,
+		link:    link,
+		group:   "group_name",
 	}
 
 	for _, r := range resolvers {
@@ -49,10 +49,7 @@ type mirror struct {
 }
 
 func (m mirror) resolve(t *Tuple) bool {
-	// t.Source = m.source
-	// t.Account = m.account
-	// t.Project = m.project
-	t.resolve(m.source, m.account, m.project, "")
+	t.makeResolved(m.source, m.account, m.project, "")
 	return true
 }
 
@@ -102,33 +99,30 @@ var mirrors = map[string]mirrorResolver{
 var bazilOrgRe = regexp.MustCompile(`\Abazil\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func bazilOrgResolver(t *Tuple) bool {
-	if !bazilOrgRe.MatchString(t.Package) {
+	if !bazilOrgRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := bazilOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := bazilOrgRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "bazil"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "bazil", sm[0][1], "")
+	t.makeResolved(GH, "bazil", sm[0][1], "")
 	return true
 }
 
 // cloud.google.com/go/* -> github.com/googleapis/google-cloud-go
-var cloudGoogleComRe = regexp.MustCompile(`\Acloud\.google\.com/go(/([0-9A-Za-z][-0-9A-Za-z]+))?\z`)
+var cloudGoogleComRe = regexp.MustCompile(`\Acloud\.google\.com/go/?(([0-9A-Za-z][-0-9A-Za-z]+))?\z`)
 
 func cloudGoogleComResolver(t *Tuple) bool {
-	if !cloudGoogleComRe.MatchString(t.Package) {
+	if !cloudGoogleComRe.MatchString(t.pkg) {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "googleapis"
-	// t.Project = "google-cloud-go"
-	// t.Submodule = ""
-	t.resolve(GH, "googleapis", "google-cloud-go", "")
+	var submodule string
+	sm := cloudGoogleComRe.FindAllStringSubmatch(t.pkg, -1)
+	if len(sm) > 0 {
+		submodule = sm[0][1]
+	}
+	t.makeResolved(GH, "googleapis", "google-cloud-go", submodule)
 	return true
 }
 
@@ -136,18 +130,14 @@ func cloudGoogleComResolver(t *Tuple) bool {
 var codeCloudfoundryOrgRe = regexp.MustCompile(`\Acode\.cloudfoundry\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func codeCloudfoundryOrgResolver(t *Tuple) bool {
-	if !codeCloudfoundryOrgRe.MatchString(t.Package) {
+	if !codeCloudfoundryOrgRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := codeCloudfoundryOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := codeCloudfoundryOrgRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "cloudfoundry"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "cloudfoundry", sm[0][1], "")
+	t.makeResolved(GH, "cloudfoundry", sm[0][1], "")
 	return true
 }
 
@@ -155,18 +145,14 @@ func codeCloudfoundryOrgResolver(t *Tuple) bool {
 var goEtcdIoRe = regexp.MustCompile(`\Ago\.etcd\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func goEtcdIoResolver(t *Tuple) bool {
-	if !goEtcdIoRe.MatchString(t.Package) {
+	if !goEtcdIoRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := goEtcdIoRe.FindAllStringSubmatch(t.Package, -1)
+	sm := goEtcdIoRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "etcd-io"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "etcd-io", sm[0][1], "")
+	t.makeResolved(GH, "etcd-io", sm[0][1], "")
 	return true
 }
 
@@ -174,18 +160,14 @@ func goEtcdIoResolver(t *Tuple) bool {
 var goMozillaOrgRe = regexp.MustCompile(`\Ago\.mozilla\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func goMozillaOrgResolver(t *Tuple) bool {
-	if !goMozillaOrgRe.MatchString(t.Package) {
+	if !goMozillaOrgRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := goMozillaOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := goMozillaOrgRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "mozilla-services"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "mozilla-services", sm[0][1], "")
+	t.makeResolved(GH, "mozilla-services", sm[0][1], "")
 	return true
 }
 
@@ -193,18 +175,14 @@ func goMozillaOrgResolver(t *Tuple) bool {
 var goUberOrgRe = regexp.MustCompile(`\Ago\.uber\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func goUberOrgResolver(t *Tuple) bool {
-	if !goUberOrgRe.MatchString(t.Package) {
+	if !goUberOrgRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := goUberOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := goUberOrgRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "uber-go"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "uber-go", sm[0][1], "")
+	t.makeResolved(GH, "uber-go", sm[0][1], "")
 	return true
 }
 
@@ -212,18 +190,14 @@ func goUberOrgResolver(t *Tuple) bool {
 var golangOrgRe = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func golangOrgResolver(t *Tuple) bool {
-	if !golangOrgRe.MatchString(t.Package) {
+	if !golangOrgRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := golangOrgRe.FindAllStringSubmatch(t.Package, -1)
+	sm := golangOrgRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "golang"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "golang", sm[0][1], "")
+	t.makeResolved(GH, "golang", sm[0][1], "")
 	return true
 }
 
@@ -232,31 +206,18 @@ func golangOrgResolver(t *Tuple) bool {
 var gopkgInRe = regexp.MustCompile(`\Agopkg\.in/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+)?(?:/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+))?\z`)
 
 func gopkgInResolver(t *Tuple) bool {
-	if !gopkgInRe.MatchString(t.Package) {
+	if !gopkgInRe.MatchString(t.pkg) {
 		return false
 	}
 	// fsnotify is a special case in gopkg.in
-	if t.Package == "gopkg.in/fsnotify.v1" {
-		// t.Source = GH
-		// t.Account = "fsnotify"
-		// t.Project = "fsnotify"
-		// t.Submodule = ""
-		t.resolve(GH, "fsnotify", "fsnotify", "")
+	if t.pkg == "gopkg.in/fsnotify.v1" {
+		t.makeResolved(GH, "fsnotify", "fsnotify", "")
 		return true
 	}
-	sm := gopkgInRe.FindAllStringSubmatch(t.Package, -1)
+	sm := gopkgInRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// if sm[0][2] == "" {
-	//     t.Account = "go-" + sm[0][1]
-	//     t.Project = sm[0][1]
-	// } else {
-	//     t.Account = sm[0][1]
-	//     t.Project = sm[0][2]
-	// }
-	// t.Submodule = ""
 	var account, project string
 	if sm[0][2] == "" {
 		account = "go-" + sm[0][1]
@@ -265,7 +226,7 @@ func gopkgInResolver(t *Tuple) bool {
 		account = sm[0][1]
 		project = sm[0][2]
 	}
-	t.resolve(GH, account, project, "")
+	t.makeResolved(GH, account, project, "")
 	return true
 }
 
@@ -273,18 +234,14 @@ func gopkgInResolver(t *Tuple) bool {
 var k8sIoRe = regexp.MustCompile(`\Ak8s\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func k8sIoResolver(t *Tuple) bool {
-	if !k8sIoRe.MatchString(t.Package) {
+	if !k8sIoRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := k8sIoRe.FindAllStringSubmatch(t.Package, -1)
+	sm := k8sIoRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "kubernetes"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "kubernetes", sm[0][1], "")
+	t.makeResolved(GH, "kubernetes", sm[0][1], "")
 	return true
 }
 
@@ -292,18 +249,14 @@ func k8sIoResolver(t *Tuple) bool {
 var mvdanCcRe = regexp.MustCompile(`\Amvdan\.cc/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func mvdanCcResolver(t *Tuple) bool {
-	if !mvdanCcRe.MatchString(t.Package) {
+	if !mvdanCcRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := mvdanCcRe.FindAllStringSubmatch(t.Package, -1)
+	sm := mvdanCcRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "mvdan"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "mvdan", sm[0][1], "")
+	t.makeResolved(GH, "mvdan", sm[0][1], "")
 	return true
 }
 
@@ -311,18 +264,14 @@ func mvdanCcResolver(t *Tuple) bool {
 var rscIoRe = regexp.MustCompile(`\Arsc\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
 func rscIoResolver(t *Tuple) bool {
-	if !rscIoRe.MatchString(t.Package) {
+	if !rscIoRe.MatchString(t.pkg) {
 		return false
 	}
-	sm := rscIoRe.FindAllStringSubmatch(t.Package, -1)
+	sm := rscIoRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	// t.Source = GH
-	// t.Account = "rsc"
-	// t.Project = sm[0][1]
-	// t.Submodule = ""
-	t.resolve(GH, "rsc", sm[0][1], "")
+	t.makeResolved(GH, "rsc", sm[0][1], "")
 	return true
 }
 
@@ -330,7 +279,7 @@ func tryMirror(t *Tuple) (bool, error) {
 	// TODO: lookup online unless -offline was given
 
 	for k, v := range mirrors {
-		if strings.HasPrefix(t.Package, k) {
+		if strings.HasPrefix(t.pkg, k) {
 			return v.resolve(t), nil
 		}
 	}
@@ -338,46 +287,34 @@ func tryMirror(t *Tuple) (bool, error) {
 }
 
 func tryGithub(t *Tuple) (bool, error) {
-	if !strings.HasPrefix(t.Package, "github.com") {
+	if !strings.HasPrefix(t.pkg, "github.com") {
 		return false, nil
 	}
-	parts := strings.SplitN(t.Package, "/", 4)
+	parts := strings.SplitN(t.pkg, "/", 4)
 	if len(parts) < 3 {
-		return false, fmt.Errorf("unexpected Github package name: %q", t.Package)
+		return false, fmt.Errorf("unexpected Github package name: %q", t.pkg)
 	}
-	// t.Source = GH
-	// t.Account = parts[1]
-	// t.Project = parts[2]
-	// if len(parts) == 4 {
-	//     t.Submodule = parts[3]
-	// }
 	var submodule string
 	if len(parts) == 4 {
 		submodule = parts[3]
 	}
-	t.resolve(GH, parts[1], parts[2], submodule)
+	t.makeResolved(GH, parts[1], parts[2], submodule)
 	return true, nil
 }
 
 func tryGitlab(t *Tuple) (bool, error) {
-	if !strings.HasPrefix(t.Package, "gitlab.com") {
+	if !strings.HasPrefix(t.pkg, "gitlab.com") {
 		return false, nil
 	}
-	parts := strings.SplitN(t.Package, "/", 4)
+	parts := strings.SplitN(t.pkg, "/", 4)
 	if len(parts) < 3 {
-		return false, fmt.Errorf("unexpected Gitlab package name: %q", t.Package)
+		return false, fmt.Errorf("unexpected Gitlab package name: %q", t.pkg)
 	}
-	// t.Source = GL
-	// t.Account = parts[1]
-	// t.Project = parts[2]
-	// if len(parts) == 4 {
-	//     t.Submodule = parts[3]
-	// }
 	var submodule string
 	if len(parts) == 4 {
 		submodule = parts[3]
 	}
-	t.resolve(GL, parts[1], parts[2], submodule)
+	t.makeResolved(GL, parts[1], parts[2], submodule)
 	return true, nil
 }
 

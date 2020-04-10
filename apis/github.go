@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/dmgk/modules2tuple/config"
@@ -111,7 +112,7 @@ func GithubLookupTag(account, project, path, tag string) (string, error) {
 	// Github API returns tags sorted by creation time, earliest first.
 	// Iterate through them in reverse order to find the most recent matching tag.
 	for i := len(allTags) - 1; i >= 0; i-- {
-		if strings.HasSuffix(allTags[i], path+"/"+tag) {
+		if strings.HasSuffix(allTags[i], filepath.Join(path, tag)) {
 			return strings.TrimPrefix(allTags[i], "refs/tags/"), nil
 		}
 	}

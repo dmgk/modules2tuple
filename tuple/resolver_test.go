@@ -21,23 +21,23 @@ func TestGithubResolver(t *testing.T) {
 
 	for i, x := range examples {
 		tp := &Tuple{
-			Package: x.pkg,
+			pkg: x.pkg,
 		}
 		ok, err := tryGithub(tp)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !ok {
-			t.Fatalf("(%d): expected %q to match", i, tp.Package)
+			t.Fatalf("(%d): expected %q to match", i, tp.pkg)
 		}
-		if fmt.Sprintf("%T %v", tp.Source, tp.Source) != fmt.Sprintf("%T %v", x.source, x.source) {
-			t.Errorf("(%d) expected source to be %q, got %q", i, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.Source, tp.Source))
+		if fmt.Sprintf("%T %v", tp.source, tp.source) != fmt.Sprintf("%T %v", x.source, x.source) {
+			t.Errorf("(%d) expected source to be %q, got %q", i, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.source, tp.source))
 		}
-		if tp.Account != x.account {
-			t.Errorf("(%d) expected account to be %q, got %q", i, x.account, tp.Account)
+		if tp.account != x.account {
+			t.Errorf("(%d) expected account to be %q, got %q", i, x.account, tp.account)
 		}
-		if tp.Project != x.project {
-			t.Errorf("(%d) expected project to be %q, got %q", i, x.project, tp.Project)
+		if tp.project != x.project {
+			t.Errorf("(%d) expected project to be %q, got %q", i, x.project, tp.project)
 		}
 	}
 }
@@ -50,23 +50,23 @@ func TestGitlabResolver(t *testing.T) {
 
 	for i, x := range examples {
 		tp := &Tuple{
-			Package: x.pkg,
+			pkg: x.pkg,
 		}
 		ok, err := tryGitlab(tp)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !ok {
-			t.Fatalf("(%d): expected %q to match", i, tp.Package)
+			t.Fatalf("(%d): expected %q to match", i, tp.pkg)
 		}
-		if fmt.Sprintf("%T %v", tp.Source, tp.Source) != fmt.Sprintf("%T %v", x.source, x.source) {
-			t.Errorf("(%d) expected source to be %q, got %q", i, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.Source, tp.Source))
+		if fmt.Sprintf("%T %v", tp.source, tp.source) != fmt.Sprintf("%T %v", x.source, x.source) {
+			t.Errorf("(%d) expected source to be %q, got %q", i, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.source, tp.source))
 		}
-		if tp.Account != x.account {
-			t.Errorf("(%d) expected account to be %q, got %q", i, x.account, tp.Account)
+		if tp.account != x.account {
+			t.Errorf("(%d) expected account to be %q, got %q", i, x.account, tp.account)
 		}
-		if tp.Project != x.project {
-			t.Errorf("(%d) expected project to be %q, got %q", i, x.project, tp.Project)
+		if tp.project != x.project {
+			t.Errorf("(%d) expected project to be %q, got %q", i, x.project, tp.project)
 		}
 	}
 }
@@ -97,23 +97,23 @@ func TestMirrorResolver(t *testing.T) {
 
 	for i, x := range examples {
 		tp := &Tuple{
-			Package: x.pkg,
+			pkg: x.pkg,
 		}
 		ok, err := tryMirror(tp)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !ok {
-			t.Fatalf("(%d): expected %q to match", i, tp.Package)
+			t.Fatalf("(%d): expected %q to match", i, tp.pkg)
 		}
-		if fmt.Sprintf("%T %v", tp.Source, tp.Source) != fmt.Sprintf("%T %v", x.source, x.source) {
-			t.Errorf("(%d) expected source to be %q, got %q", i, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.Source, tp.Source))
+		if fmt.Sprintf("%T %v", tp.source, tp.source) != fmt.Sprintf("%T %v", x.source, x.source) {
+			t.Errorf("(%d) expected source to be %q, got %q", i, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.source, tp.source))
 		}
-		if tp.Account != x.account {
-			t.Errorf("(%d) expected account to be %q, got %q", i, x.account, tp.Account)
+		if tp.account != x.account {
+			t.Errorf("(%d) expected account to be %q, got %q", i, x.account, tp.account)
 		}
-		if tp.Project != x.project {
-			t.Errorf("(%d) expected project to be %q, got %q", i, x.project, tp.Project)
+		if tp.project != x.project {
+			t.Errorf("(%d) expected project to be %q, got %q", i, x.project, tp.project)
 		}
 	}
 }
@@ -121,20 +121,20 @@ func TestMirrorResolver(t *testing.T) {
 func testResolverFnExamples(t *testing.T, name string, fn mirrorFn, examples []resolverExample) {
 	for _, x := range examples {
 		tp := &Tuple{
-			Package: x.pkg,
+			pkg: x.pkg,
 		}
 		ok := fn(tp)
 		if !ok {
-			t.Fatalf("(%s): expected %q to match", name, tp.Package)
+			t.Fatalf("(%s): expected %q to match", name, tp.pkg)
 		}
-		if fmt.Sprintf("%T %v", tp.Source, tp.Source) != fmt.Sprintf("%T %v", x.source, x.source) {
-			t.Errorf("(%s) expected source to be %q, got %q", name, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.Source, tp.Source))
+		if fmt.Sprintf("%T %v", tp.source, tp.source) != fmt.Sprintf("%T %v", x.source, x.source) {
+			t.Errorf("(%s) expected source to be %q, got %q", name, fmt.Sprintf("%T %v", x.source, x.source), fmt.Sprintf("%T %v", tp.source, tp.source))
 		}
-		if tp.Account != x.account {
-			t.Errorf("(%s) expected account to be %q, got %q", name, x.account, tp.Account)
+		if tp.account != x.account {
+			t.Errorf("(%s) expected account to be %q, got %q", name, x.account, tp.account)
 		}
-		if tp.Project != x.project {
-			t.Errorf("(%s) expected project to be %q, got %q", name, x.project, tp.Project)
+		if tp.project != x.project {
+			t.Errorf("(%s) expected project to be %q, got %q", name, x.project, tp.project)
 		}
 	}
 }

@@ -54,7 +54,7 @@ func Read(r io.Reader) (*Result, error) {
 						ch <- err
 						return
 					}
-					err = t.Postprocess()
+					err = t.Fix()
 					if err != nil {
 						ch <- err
 						return
@@ -78,7 +78,7 @@ func Read(r io.Reader) (*Result, error) {
 		}
 	}
 
-	res.Postprocess()
+	res.Fix()
 	return res, nil
 }
 
@@ -101,8 +101,8 @@ func (r *Result) AddError(err error) {
 	}
 }
 
-func (r *Result) Postprocess() {
-	if err := r.tuples.Postprocess(); err != nil {
+func (r *Result) Fix() {
+	if err := r.tuples.Fix(); err != nil {
 		r.AddError(err)
 	}
 }
@@ -143,9 +143,9 @@ func (r *Result) String() string {
 		lines = append(lines, b.String())
 	}
 
-	postExtract := r.tuples.PostExtract()
-	if postExtract != "" {
-		lines = append(lines, postExtract)
+	links := r.tuples.Links()
+	if len(links) > 0 {
+		lines = append(lines, links.String())
 	}
 
 	return strings.Join(lines, "\n\n")
