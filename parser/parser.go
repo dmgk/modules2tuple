@@ -36,6 +36,7 @@ func Read(r io.Reader) (*Result, error) {
 
 		scanner := bufio.NewScanner(r)
 		sem := make(chan int, runtime.NumCPU())
+		// sem := make(chan int, 1)
 		var wg sync.WaitGroup
 
 		for scanner.Scan() {
@@ -78,18 +79,6 @@ func Read(r io.Reader) (*Result, error) {
 	}
 
 	res.Postprocess()
-
-	// if !config.Offline {
-	//     if err := tuples.EnsureUniqueGithubProjectAndTag(); err != nil {
-	//         switch err := err.(type) {
-	//         case tuple.DuplicateProjectAndTag:
-	//             errors.DuplicateProjectAndTag = append(errors.DuplicateProjectAndTag, err)
-	//         default:
-	//             return nil, err
-	//         }
-	//     }
-	// }
-
 	return res, nil
 }
 
@@ -120,21 +109,21 @@ func (r *Result) Postprocess() {
 
 type errSlice []error
 
-func (ee errSlice) String() string {
-	var ss []string
-	for _, e := range ee {
-		ss = append(ss, fmt.Sprintf("\t\t#\t%s", e))
+func (errs errSlice) String() string {
+	var lines []string
+	for _, err := range errs {
+		lines = append(lines, fmt.Sprintf("\t\t#\t%s", err))
 	}
-	return strings.Join(ss, "\n")
+	return strings.Join(lines, "\n")
 }
 
 func (r *Result) String() string {
-	var ss []string
+	var lines []string
 
 	if len(r.tuples) > 0 {
 		var b bytes.Buffer
 		b.WriteString(r.tuples.String())
-		ss = append(ss, b.String())
+		lines = append(lines, b.String())
 	}
 
 	if len(r.errSource) > 0 {
@@ -144,15 +133,20 @@ func (r *Result) String() string {
 			return r.errSource[i].Error() < r.errSource[j].Error()
 		})
 		b.WriteString(errSlice(r.errSource).String())
-		ss = append(ss, b.String())
+		lines = append(lines, b.String())
 	}
 
 	if len(r.errOther) > 0 {
 		var b bytes.Buffer
 		b.WriteString("\t\t# Other errors found during processing:\n")
 		b.WriteString(errSlice(r.errOther).String())
-		ss = append(ss, b.String())
+		lines = append(lines, b.String())
 	}
 
-	return strings.Join(ss, "\n\n")
+	postExtract := r.tuples.PostExtract()
+	if postExtract != "" {
+		lines = append(lines, postExtract)
+	}
+
+	return strings.Join(lines, "\n\n")
 }

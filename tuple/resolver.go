@@ -31,26 +31,11 @@ func Resolve(pkg, version, subdir, link string) (*Tuple, error) {
 		}
 	}
 
-	if !t.IsResolved() {
-		return nil, SourceError(t.String())
+	if t.isResolved() {
+		return t, nil
 	}
-
-	group := t.Account + "_" + t.Project
-	if t.Submodule != "" {
-		group = group + "_" + t.Submodule
-	}
-	group = underscoreRe.ReplaceAllString(group, "_")
-	group = strings.Trim(group, "_")
-	t.Group = strings.ToLower(group)
-
-	linkSuffix := underscoreRe.ReplaceAllString(t.Link, "_")
-	linkSuffix = strings.Trim(linkSuffix, "_")
-	t.LinkSuffix = strings.ToLower(linkSuffix)
-
-	return t, nil
+	return nil, SourceError(t.String())
 }
-
-var underscoreRe = regexp.MustCompile(`[^\w]+`)
 
 type mirrorResolver interface {
 	resolve(t *Tuple) bool
@@ -64,9 +49,10 @@ type mirror struct {
 }
 
 func (m mirror) resolve(t *Tuple) bool {
-	t.Source = m.source
-	t.Account = m.account
-	t.Project = m.project
+	// t.Source = m.source
+	// t.Account = m.account
+	// t.Project = m.project
+	t.resolve(m.source, m.account, m.project, "")
 	return true
 }
 
@@ -123,10 +109,11 @@ func bazilOrgResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "bazil"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "bazil"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "bazil", sm[0][1], "")
 	return true
 }
 
@@ -137,10 +124,11 @@ func cloudGoogleComResolver(t *Tuple) bool {
 	if !cloudGoogleComRe.MatchString(t.Package) {
 		return false
 	}
-	t.Source = GH
-	t.Account = "googleapis"
-	t.Project = "google-cloud-go"
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "googleapis"
+	// t.Project = "google-cloud-go"
+	// t.Submodule = ""
+	t.resolve(GH, "googleapis", "google-cloud-go", "")
 	return true
 }
 
@@ -155,10 +143,11 @@ func codeCloudfoundryOrgResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "cloudfoundry"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "cloudfoundry"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "cloudfoundry", sm[0][1], "")
 	return true
 }
 
@@ -173,10 +162,11 @@ func goEtcdIoResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "etcd-io"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "etcd-io"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "etcd-io", sm[0][1], "")
 	return true
 }
 
@@ -191,10 +181,11 @@ func goMozillaOrgResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "mozilla-services"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "mozilla-services"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "mozilla-services", sm[0][1], "")
 	return true
 }
 
@@ -209,10 +200,11 @@ func goUberOrgResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "uber-go"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "uber-go"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "uber-go", sm[0][1], "")
 	return true
 }
 
@@ -227,10 +219,11 @@ func golangOrgResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "golang"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "golang"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "golang", sm[0][1], "")
 	return true
 }
 
@@ -244,25 +237,35 @@ func gopkgInResolver(t *Tuple) bool {
 	}
 	// fsnotify is a special case in gopkg.in
 	if t.Package == "gopkg.in/fsnotify.v1" {
-		t.Source = GH
-		t.Account = "fsnotify"
-		t.Project = "fsnotify"
-		t.Submodule = ""
+		// t.Source = GH
+		// t.Account = "fsnotify"
+		// t.Project = "fsnotify"
+		// t.Submodule = ""
+		t.resolve(GH, "fsnotify", "fsnotify", "")
 		return true
 	}
 	sm := gopkgInRe.FindAllStringSubmatch(t.Package, -1)
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
+	// t.Source = GH
+	// if sm[0][2] == "" {
+	//     t.Account = "go-" + sm[0][1]
+	//     t.Project = sm[0][1]
+	// } else {
+	//     t.Account = sm[0][1]
+	//     t.Project = sm[0][2]
+	// }
+	// t.Submodule = ""
+	var account, project string
 	if sm[0][2] == "" {
-		t.Account = "go-" + sm[0][1]
-		t.Project = sm[0][1]
+		account = "go-" + sm[0][1]
+		project = sm[0][1]
 	} else {
-		t.Account = sm[0][1]
-		t.Project = sm[0][2]
+		account = sm[0][1]
+		project = sm[0][2]
 	}
-	t.Submodule = ""
+	t.resolve(GH, account, project, "")
 	return true
 }
 
@@ -277,10 +280,11 @@ func k8sIoResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "kubernetes"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "kubernetes"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "kubernetes", sm[0][1], "")
 	return true
 }
 
@@ -295,10 +299,11 @@ func mvdanCcResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "mvdan"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "mvdan"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "mvdan", sm[0][1], "")
 	return true
 }
 
@@ -313,10 +318,11 @@ func rscIoResolver(t *Tuple) bool {
 	if len(sm) == 0 {
 		return false
 	}
-	t.Source = GH
-	t.Account = "rsc"
-	t.Project = sm[0][1]
-	t.Submodule = ""
+	// t.Source = GH
+	// t.Account = "rsc"
+	// t.Project = sm[0][1]
+	// t.Submodule = ""
+	t.resolve(GH, "rsc", sm[0][1], "")
 	return true
 }
 
@@ -339,12 +345,17 @@ func tryGithub(t *Tuple) (bool, error) {
 	if len(parts) < 3 {
 		return false, fmt.Errorf("unexpected Github package name: %q", t.Package)
 	}
-	t.Source = GH
-	t.Account = parts[1]
-	t.Project = parts[2]
+	// t.Source = GH
+	// t.Account = parts[1]
+	// t.Project = parts[2]
+	// if len(parts) == 4 {
+	//     t.Submodule = parts[3]
+	// }
+	var submodule string
 	if len(parts) == 4 {
-		t.Submodule = parts[3]
+		submodule = parts[3]
 	}
+	t.resolve(GH, parts[1], parts[2], submodule)
 	return true, nil
 }
 
@@ -356,12 +367,17 @@ func tryGitlab(t *Tuple) (bool, error) {
 	if len(parts) < 3 {
 		return false, fmt.Errorf("unexpected Gitlab package name: %q", t.Package)
 	}
-	t.Source = GL
-	t.Account = parts[1]
-	t.Project = parts[2]
+	// t.Source = GL
+	// t.Account = parts[1]
+	// t.Project = parts[2]
+	// if len(parts) == 4 {
+	//     t.Submodule = parts[3]
+	// }
+	var submodule string
 	if len(parts) == 4 {
-		t.Submodule = parts[3]
+		submodule = parts[3]
 	}
+	t.resolve(GL, parts[1], parts[2], submodule)
 	return true, nil
 }
 
@@ -370,13 +386,3 @@ var resolvers = []func(*Tuple) (bool, error){
 	tryGithub,
 	tryGitlab,
 }
-
-// func tryMirror(pkg string) (*Tuple, error) {
-//     for k, v := range mirrors {
-//         if strings.HasPrefix(pkg, k) {
-//             m := v.parse(pkg)
-//             return newTuple(m.source, pkg, m.account, m.project), nil
-//         }
-//     }
-//     return nil, nil
-// }
