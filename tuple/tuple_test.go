@@ -94,7 +94,7 @@ func TestPackageReplace(t *testing.T) {
 	examples := [][]string{
 		// spec, expected replaced package String()
 		{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra v0.0.1-zsh-completion-custom", "rsteube:cobra:v0.0.1-zsh-completion-custom:rsteube_cobra/vendor/github.com/spf13/cobra"},
-		{"github.com/hashicorp/vault/api v1.0.5-0.20200215224050-f6547fa8e820 => ./api", "hashicorp:vault:f6547fa8e820:hashicorp_vault"},
+		{"github.com/hashicorp/vault/api v1.0.5-0.20200215224050-f6547fa8e820 => ./api", "hashicorp:vault:f6547fa8e820:hashicorp_vault_api/github.com/hashicorp/vault/api"},
 	}
 
 	for i, x := range examples {

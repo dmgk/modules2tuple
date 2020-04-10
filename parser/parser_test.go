@@ -37,7 +37,7 @@ gitlab.com/gitlab-org/gitaly-proto/go/gitalypb
 		golang:lint:959b441ac422:golang_lint/vendor/github.com/golang/lint \
 		karrick:godirwalk:v1.10.12:karrick_godirwalk/vendor/github.com/karrick/godirwalk \
 		rogpeppe:go-internal:v1.3.0:rogpeppe_go_internal/vendor/github.com/rogpeppe/go-internal \
-		ugorji:go:e444a5086c43:ugorji_go/vendor/github.com/ugorji/go \
+		ugorji:go:e444a5086c43:ugorji_go_codec/vendor/github.com/ugorji/go \
 		user:pkg:v3.0.0:user_pkg/vendor/gopkg.in/user/pkg.v3
 
 GL_TUPLE=	gitlab-org:gitaly-proto:v1.32.0:gitlab_org_gitaly_proto/vendor/gitlab.com/gitlab-org/gitaly-proto \
@@ -70,7 +70,7 @@ func TestUniqueGroups(t *testing.T) {
 		minio:lsync:v1.0.1:minio_lsync/vendor/github.com/minio/lsync \
 		minio:mc:643835013047:minio_mc/vendor/github.com/minio/mc \
 		minio:minio-go:5325257a208f:minio_minio_go/vendor/github.com/minio/minio-go \
-		minio:minio-go:v6.0.39:minio_minio_go_1/vendor/github.com/minio/minio-go/v6 \
+		minio:minio-go:v6.0.39:minio_minio_go_v6/vendor/github.com/minio/minio-go/v6 \
 		minio:parquet-go:9d767baf1679:minio_parquet_go/vendor/github.com/minio/parquet-go`
 
 	config.Offline = true
