@@ -21,7 +21,7 @@ func get(url, username, token string) ([]byte, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("GET %s: %v", url, err)
+		return nil, fmt.Errorf("apis.get %s: %v", url, err)
 	}
 	defer resp.Body.Close()
 
@@ -29,13 +29,13 @@ func get(url, username, token string) ([]byte, error) {
 	case http.StatusOK:
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return nil, fmt.Errorf("GET %s: %v", url, err)
+			return nil, fmt.Errorf("apis.get %s: %v", url, err)
 		}
 		return body, nil
 	case http.StatusNotFound:
 		return nil, errNotFound
 	default:
 		body, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("GET %s: %d, body: %v", url, resp.StatusCode, string(body))
+		return nil, fmt.Errorf("apis.get %s: %d, body: %v", url, resp.StatusCode, string(body))
 	}
 }

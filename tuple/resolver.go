@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/dmgk/modules2tuple/config"
+	"github.com/dmgk/modules2tuple/debug"
 )
 
 type SourceError string
@@ -22,24 +25,37 @@ func Resolve(pkg, version, subdir, link_target string) (*Tuple, error) {
 		group:    "group_name",
 	}
 
-	for _, r := range resolvers {
-		ok, err := r(t)
+	var done bool
+	for {
+		// try static mirror lookup first
+		for k, r := range resolvers {
+			if strings.HasPrefix(pkg, k) {
+				m, err := r.resolve(pkg)
+				if err != nil {
+					return nil, err
+				}
+				if m != nil {
+					t.makeResolved(m.source, m.account, m.project, m.module)
+					return t, nil
+				}
+			}
+		}
+
+		if done || config.Offline {
+			break
+		}
+
+		// try looking up missing mirror online
+		m, err := discoverMirrors(pkg)
 		if err != nil {
 			return nil, err
 		}
-		if ok {
-			break
-		}
+		debug.Printf("[tuple.Resolve] discovered mirror %q for %q\n", m, pkg)
+		pkg = m
+		done = true
 	}
 
-	if t.isResolved() {
-		return t, nil
-	}
 	return nil, SourceError(t.String())
-}
-
-type mirrorResolver interface {
-	resolve(t *Tuple) bool
 }
 
 type mirror struct {
@@ -49,175 +65,203 @@ type mirror struct {
 	module  string
 }
 
-func (m mirror) resolve(t *Tuple) bool {
-	t.makeResolved(m.source, m.account, m.project, "")
-	return true
+type resolver interface {
+	resolve(pkg string) (*mirror, error)
 }
 
-type mirrorFn func(t *Tuple) bool
-
-func (f mirrorFn) resolve(t *Tuple) bool {
-	return f(t)
+func (m *mirror) resolve(string) (*mirror, error) {
+	return m, nil
 }
 
-var mirrors = map[string]mirrorResolver{
-	"contrib.go.opencensus.io/exporter/ocagent": mirror{GH, "census-ecosystem", "opencensus-go-exporter-ocagent", ""},
+type mirrorFn func(pkg string) (*mirror, error)
+
+func (f mirrorFn) resolve(pkg string) (*mirror, error) {
+	return f(pkg)
+}
+
+var resolvers = map[string]resolver{
+	"github.com": mirrorFn(githubResolver),
+	"gitlab.com": mirrorFn(gitlabResolver),
+
+	"contrib.go.opencensus.io/exporter/ocagent": &mirror{GH, "census-ecosystem", "opencensus-go-exporter-ocagent", ""},
 
 	"bazil.org":                   mirrorFn(bazilOrgResolver),
-	"camlistore.org":              mirror{GH, "perkeep", "perkeep", ""},
+	"camlistore.org":              &mirror{GH, "perkeep", "perkeep", ""},
 	"cloud.google.com":            mirrorFn(cloudGoogleComResolver),
 	"code.cloudfoundry.org":       mirrorFn(codeCloudfoundryOrgResolver),
-	"docker.io/go-docker":         mirror{GH, "docker", "go-docker", ""},
-	"git.apache.org/thrift.git":   mirror{GH, "apache", "thrift", ""},
-	"go.bug.st/serial.v1":         mirror{GH, "bugst", "go-serial", ""},
-	"go.elastic.co/apm":           mirror{GH, "elastic", "apm-agent-go", ""},
-	"go.elastic.co/fastjson":      mirror{GH, "elastic", "go-fastjson", ""},
+	"docker.io/go-docker":         &mirror{GH, "docker", "go-docker", ""},
+	"git.apache.org/thrift.git":   &mirror{GH, "apache", "thrift", ""},
+	"go.bug.st/serial.v1":         &mirror{GH, "bugst", "go-serial", ""},
+	"go.elastic.co/apm":           &mirror{GH, "elastic", "apm-agent-go", ""},
+	"go.elastic.co/fastjson":      &mirror{GH, "elastic", "go-fastjson", ""},
 	"go.etcd.io":                  mirrorFn(goEtcdIoResolver),
-	"go.mongodb.org/mongo-driver": mirror{GH, "mongodb", "mongo-go-driver", ""},
+	"go.mongodb.org/mongo-driver": &mirror{GH, "mongodb", "mongo-go-driver", ""},
 	"go.mozilla.org":              mirrorFn(goMozillaOrgResolver),
-	"go.opencensus.io":            mirror{GH, "census-instrumentation", "opencensus-go", ""},
+	"go.opencensus.io":            &mirror{GH, "census-instrumentation", "opencensus-go", ""},
 	"go.uber.org":                 mirrorFn(goUberOrgResolver),
-	"go4.org":                     mirror{GH, "go4org", "go4", ""},
-	"gocloud.dev":                 mirror{GH, "google", "go-cloud", ""},
+	"go4.org":                     &mirror{GH, "go4org", "go4", ""},
+	"gocloud.dev":                 &mirror{GH, "google", "go-cloud", ""},
 	"golang.org":                  mirrorFn(golangOrgResolver),
-	"google.golang.org/api":       mirror{GH, "googleapis", "google-api-go-client", ""},
-	"google.golang.org/appengine": mirror{GH, "golang", "appengine", ""},
-	"google.golang.org/genproto":  mirror{GH, "google", "go-genproto", ""},
-	"google.golang.org/grpc":      mirror{GH, "grpc", "grpc-go", ""},
+	"google.golang.org/api":       &mirror{GH, "googleapis", "google-api-go-client", ""},
+	"google.golang.org/appengine": &mirror{GH, "golang", "appengine", ""},
+	"google.golang.org/genproto":  &mirror{GH, "google", "go-genproto", ""},
+	"google.golang.org/grpc":      &mirror{GH, "grpc", "grpc-go", ""},
 	"gopkg.in":                    mirrorFn(gopkgInResolver),
-	"gotest.tools":                mirror{GH, "gotestyourself", "gotest.tools", ""},
-	"honnef.co/go/tools":          mirror{GH, "dominikh", "go-tools", ""},
-	"howett.net/plist":            mirror{GitlabSource("https://gitlab.howett.net"), "go", "plist", ""},
+	"gotest.tools":                &mirror{GH, "gotestyourself", "gotest.tools", ""},
+	"honnef.co/go/tools":          &mirror{GH, "dominikh", "go-tools", ""},
+	"howett.net/plist":            &mirror{GitlabSource("https://gitlab.howett.net"), "go", "plist", ""},
 	"k8s.io":                      mirrorFn(k8sIoResolver),
-	"layeh.com/radius":            mirror{GH, "layeh", "radius", ""},
+	"layeh.com/radius":            &mirror{GH, "layeh", "radius", ""},
 	"mvdan.cc":                    mirrorFn(mvdanCcResolver),
 	"rsc.io":                      mirrorFn(rscIoResolver),
-	"sigs.k8s.io/yaml":            mirror{GH, "kubernetes-sigs", "yaml", ""},
-	"tinygo.org/x/go-llvm":        mirror{GH, "tinygo-org", "go-llvm", ""},
+	"sigs.k8s.io/yaml":            &mirror{GH, "kubernetes-sigs", "yaml", ""},
+	"tinygo.org/x/go-llvm":        &mirror{GH, "tinygo-org", "go-llvm", ""},
+}
+
+func githubResolver(pkg string) (*mirror, error) {
+	if !strings.HasPrefix(pkg, "github.com") {
+		return nil, nil
+	}
+	parts := strings.SplitN(pkg, "/", 4)
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("unexpected Github package name: %q", pkg)
+	}
+	var module string
+	if len(parts) == 4 {
+		module = parts[3]
+	}
+	return &mirror{GH, parts[1], parts[2], module}, nil
+}
+
+func gitlabResolver(pkg string) (*mirror, error) {
+	if !strings.HasPrefix(pkg, "gitlab.com") {
+		return nil, nil
+	}
+	parts := strings.SplitN(pkg, "/", 4)
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("unexpected Gitlab package name: %q", pkg)
+	}
+	var module string
+	if len(parts) == 4 {
+		module = parts[3]
+	}
+	return &mirror{GL, parts[1], parts[2], module}, nil
 }
 
 // bazil.org/fuse -> github.com/bazil/fuse
 var bazilOrgRe = regexp.MustCompile(`\Abazil\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func bazilOrgResolver(t *Tuple) bool {
-	if !bazilOrgRe.MatchString(t.pkg) {
-		return false
+func bazilOrgResolver(pkg string) (*mirror, error) {
+	if !bazilOrgRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := bazilOrgRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := bazilOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "bazil", sm[0][1], "")
-	return true
+	return &mirror{GH, "bazil", sm[0][1], ""}, nil
 }
 
 // cloud.google.com/go/* -> github.com/googleapis/google-cloud-go
 var cloudGoogleComRe = regexp.MustCompile(`\Acloud\.google\.com/go/?(([0-9A-Za-z][-0-9A-Za-z]+))?\z`)
 
-func cloudGoogleComResolver(t *Tuple) bool {
-	if !cloudGoogleComRe.MatchString(t.pkg) {
-		return false
+func cloudGoogleComResolver(pkg string) (*mirror, error) {
+	if !cloudGoogleComRe.MatchString(pkg) {
+		return nil, nil
 	}
 	var module string
-	sm := cloudGoogleComRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := cloudGoogleComRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) > 0 {
 		module = sm[0][1]
 	}
-	t.makeResolved(GH, "googleapis", "google-cloud-go", module)
-	return true
+	return &mirror{GH, "googleapis", "google-cloud-go", module}, nil
 }
 
 // code.cloudfoundry.org/gofileutils -> github.com/cloudfoundry/gofileutils
 var codeCloudfoundryOrgRe = regexp.MustCompile(`\Acode\.cloudfoundry\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func codeCloudfoundryOrgResolver(t *Tuple) bool {
-	if !codeCloudfoundryOrgRe.MatchString(t.pkg) {
-		return false
+func codeCloudfoundryOrgResolver(pkg string) (*mirror, error) {
+	if !codeCloudfoundryOrgRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := codeCloudfoundryOrgRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := codeCloudfoundryOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "cloudfoundry", sm[0][1], "")
-	return true
+	return &mirror{GH, "cloudfoundry", sm[0][1], ""}, nil
 }
 
 // go.etcd.io/etcd -> github.com/etcd-io/etcd
 var goEtcdIoRe = regexp.MustCompile(`\Ago\.etcd\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func goEtcdIoResolver(t *Tuple) bool {
-	if !goEtcdIoRe.MatchString(t.pkg) {
-		return false
+func goEtcdIoResolver(pkg string) (*mirror, error) {
+	if !goEtcdIoRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := goEtcdIoRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := goEtcdIoRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "etcd-io", sm[0][1], "")
-	return true
+	return &mirror{GH, "etcd-io", sm[0][1], ""}, nil
 }
 
 // go.mozilla.org/gopgagent -> github.com/mozilla-services/gopgagent
 var goMozillaOrgRe = regexp.MustCompile(`\Ago\.mozilla\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func goMozillaOrgResolver(t *Tuple) bool {
-	if !goMozillaOrgRe.MatchString(t.pkg) {
-		return false
+func goMozillaOrgResolver(pkg string) (*mirror, error) {
+	if !goMozillaOrgRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := goMozillaOrgRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := goMozillaOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "mozilla-services", sm[0][1], "")
-	return true
+	return &mirror{GH, "mozilla-services", sm[0][1], ""}, nil
 }
 
 // go.uber.org/zap -> github.com/uber-go/zap
 var goUberOrgRe = regexp.MustCompile(`\Ago\.uber\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func goUberOrgResolver(t *Tuple) bool {
-	if !goUberOrgRe.MatchString(t.pkg) {
-		return false
+func goUberOrgResolver(pkg string) (*mirror, error) {
+	if !goUberOrgRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := goUberOrgRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := goUberOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "uber-go", sm[0][1], "")
-	return true
+	return &mirror{GH, "uber-go", sm[0][1], ""}, nil
 }
 
 // golang.org/x/pkg -> github.com/golang/pkg
 var golangOrgRe = regexp.MustCompile(`\Agolang\.org/x/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func golangOrgResolver(t *Tuple) bool {
-	if !golangOrgRe.MatchString(t.pkg) {
-		return false
+func golangOrgResolver(pkg string) (*mirror, error) {
+	if !golangOrgRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := golangOrgRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := golangOrgRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "golang", sm[0][1], "")
-	return true
+	return &mirror{GH, "golang", sm[0][1], ""}, nil
 }
 
 // gopkg.in/pkg.v3 -> github.com/go-pkg/pkg
 // gopkg.in/user/pkg.v3 -> github.com/user/pkg
 var gopkgInRe = regexp.MustCompile(`\Agopkg\.in/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+)?(?:/([0-9A-Za-z][-0-9A-Za-z]+)(?:\.v.+))?\z`)
 
-func gopkgInResolver(t *Tuple) bool {
-	if !gopkgInRe.MatchString(t.pkg) {
-		return false
+func gopkgInResolver(pkg string) (*mirror, error) {
+	if !gopkgInRe.MatchString(pkg) {
+		return nil, nil
 	}
 	// fsnotify is a special case in gopkg.in
-	if t.pkg == "gopkg.in/fsnotify.v1" {
-		t.makeResolved(GH, "fsnotify", "fsnotify", "")
-		return true
+	if pkg == "gopkg.in/fsnotify.v1" {
+		return &mirror{GH, "fsnotify", "fsnotify", ""}, nil
 	}
-	sm := gopkgInRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := gopkgInRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
 	var account, project string
 	if sm[0][2] == "" {
@@ -227,100 +271,47 @@ func gopkgInResolver(t *Tuple) bool {
 		account = sm[0][1]
 		project = sm[0][2]
 	}
-	t.makeResolved(GH, account, project, "")
-	return true
+	return &mirror{GH, account, project, ""}, nil
 }
 
 // k8s.io/api -> github.com/kubernetes/api
 var k8sIoRe = regexp.MustCompile(`\Ak8s\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func k8sIoResolver(t *Tuple) bool {
-	if !k8sIoRe.MatchString(t.pkg) {
-		return false
+func k8sIoResolver(pkg string) (*mirror, error) {
+	if !k8sIoRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := k8sIoRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := k8sIoRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "kubernetes", sm[0][1], "")
-	return true
+	return &mirror{GH, "kubernetes", sm[0][1], ""}, nil
 }
 
 // mvdan.cc/editorconfig -> github.com/mvdan/editconfig
 var mvdanCcRe = regexp.MustCompile(`\Amvdan\.cc/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func mvdanCcResolver(t *Tuple) bool {
-	if !mvdanCcRe.MatchString(t.pkg) {
-		return false
+func mvdanCcResolver(pkg string) (*mirror, error) {
+	if !mvdanCcRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := mvdanCcRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := mvdanCcRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "mvdan", sm[0][1], "")
-	return true
+	return &mirror{GH, "mvdan", sm[0][1], ""}, nil
 }
 
 // rsc.io/pdf -> github.com/rsc/pdf
 var rscIoRe = regexp.MustCompile(`\Arsc\.io/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func rscIoResolver(t *Tuple) bool {
-	if !rscIoRe.MatchString(t.pkg) {
-		return false
+func rscIoResolver(pkg string) (*mirror, error) {
+	if !rscIoRe.MatchString(pkg) {
+		return nil, nil
 	}
-	sm := rscIoRe.FindAllStringSubmatch(t.pkg, -1)
+	sm := rscIoRe.FindAllStringSubmatch(pkg, -1)
 	if len(sm) == 0 {
-		return false
+		return nil, nil
 	}
-	t.makeResolved(GH, "rsc", sm[0][1], "")
-	return true
-}
-
-func tryMirror(t *Tuple) (bool, error) {
-	// TODO: lookup online unless -offline was given
-
-	for k, v := range mirrors {
-		if strings.HasPrefix(t.pkg, k) {
-			return v.resolve(t), nil
-		}
-	}
-	return false, nil
-}
-
-func tryGithub(t *Tuple) (bool, error) {
-	if !strings.HasPrefix(t.pkg, "github.com") {
-		return false, nil
-	}
-	parts := strings.SplitN(t.pkg, "/", 4)
-	if len(parts) < 3 {
-		return false, fmt.Errorf("unexpected Github package name: %q", t.pkg)
-	}
-	var module string
-	if len(parts) == 4 {
-		module = parts[3]
-	}
-	t.makeResolved(GH, parts[1], parts[2], module)
-	return true, nil
-}
-
-func tryGitlab(t *Tuple) (bool, error) {
-	if !strings.HasPrefix(t.pkg, "gitlab.com") {
-		return false, nil
-	}
-	parts := strings.SplitN(t.pkg, "/", 4)
-	if len(parts) < 3 {
-		return false, fmt.Errorf("unexpected Gitlab package name: %q", t.pkg)
-	}
-	var module string
-	if len(parts) == 4 {
-		module = parts[3]
-	}
-	t.makeResolved(GL, parts[1], parts[2], module)
-	return true, nil
-}
-
-var resolvers = []func(*Tuple) (bool, error){
-	tryMirror,
-	tryGithub,
-	tryGitlab,
+	return &mirror{GH, "rsc", sm[0][1], ""}, nil
 }

@@ -268,17 +268,27 @@ func fixGroups(s Slice) {
 	var prevGroup string
 	suffix := 1
 
+	var maxGroup, maxPkg int
+	for _, t := range s {
+		if len(t.group) > maxGroup {
+			maxGroup = len(t.group)
+		}
+		if len(t.pkg) > maxPkg {
+			maxPkg = len(t.pkg)
+		}
+	}
+
 	key := func(i int) string {
-		return fmt.Sprintf("%-75s %s", s[i].group, s[i].pkg)
+		return fmt.Sprintf("%*s %*s", -(maxGroup + 1), s[i].group, -(maxPkg + 1), s[i].pkg)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
 	})
 
 	if config.Debug {
-		debug.Print("[fixGroups] sorted slice:\n")
+		debug.Print("[fixGroups] looking at slice:\n")
 		for i := range s {
-			debug.Printf("[fixGroups]     %s\n", key(i))
+			debug.Printf("[fixGroups]      %s\n", key(i))
 		}
 	}
 
@@ -353,17 +363,38 @@ func fixGithubProjectsAndTags(s Slice) error {
 	return nil
 }
 
+// func reverseVersion(v string) string {
+//     parts := strings.Split(v, "/")
+//     for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
+//         parts[i], parts[j] = parts[j], parts[i]
+//     }
+//     return strings.Join(parts, "/")
+// }
+
 // fixSubdirs ensures that all subdirs are unique and makes symlinks as needed.
 func fixSubdirs(s Slice) {
+	var maxSubdir, maxVersion, maxModule int
+	for _, t := range s {
+		if len(t.subdir) > maxSubdir {
+			maxSubdir = len(t.subdir)
+		}
+		if len(t.version) > maxVersion {
+			maxVersion = len(t.version)
+		}
+		if len(t.module) > maxModule {
+			maxModule = len(t.module)
+		}
+	}
+
 	key := func(i int) string {
-		return fmt.Sprintf("%-50s %30s %-30s", s[i].subdir, s[i].version, s[i].module)
+		return fmt.Sprintf("%*s %*s %*s", -(maxSubdir + 1), s[i].subdir, maxVersion+1, s[i].version, -(maxModule + 1), s[i].module)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
 	})
 
 	if config.Debug {
-		debug.Print("[fixSubdirs] sorted slice:\n")
+		debug.Print("[fixSubdirs] looking at slice:\n")
 		for i := range s {
 			debug.Printf("[fixSubdirs]     %s\n", key(i))
 		}
