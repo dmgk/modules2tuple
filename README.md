@@ -21,15 +21,15 @@ To install latest dev version directly from GitHub:
     modules2tuple [options] modules.txt
 
     Options:
-        -offline  disable all network access (env M2T_OFFLINE, default {{.offline}})
-        -debug    print debug info (env M2T_DEBUG, default {{.debug}})
+        -offline  disable all network access (env M2T_OFFLINE, default false)
+        -debug    print debug info (env M2T_DEBUG, default false)
         -v        show version
 
     Usage:
-        Vendor package dependencies and then run {{.basename}} with vendor/modules.txt:
+        Vendor package dependencies and then run modules2tuple with vendor/modules.txt:
 
         $ go mod vendor
-        $ {{.basename}} vendor/modules.txt
+        $ modules2tuple vendor/modules.txt
 
     When running in offline mode:
         - mirrors are looked up using static list and some may not be resolved
