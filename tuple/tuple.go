@@ -496,11 +496,6 @@ func (s Slice) Links() Links {
 
 // String generates "post-extract" target that creates required symlinks.
 func (l Links) String() string {
-	// Skip when offline, the result will be most likely wrong.
-	if config.Offline {
-		return ""
-	}
-
 	if len(l) == 0 {
 		return ""
 	}

@@ -40,7 +40,6 @@ When running in offline mode:
     - milti-module repos and version suffixes ("/v2") are not automatically handled
     - Github tags for modules ("v1.2.3" vs "api/v1.2.3") are not automatically resolved
     - Gitlab commit IDs are not resolved to the full 40-char IDs
-    - post-extract target is not generated
 `))
 
 func init() {
