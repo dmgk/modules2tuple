@@ -21,20 +21,19 @@ To install latest dev version directly from GitHub:
     modules2tuple [options] modules.txt
 
     Options:
-        -offline  disable all network access (env M2T_OFFLINE, default false)
+        -offline  disable all network access (env M2T_OFFLINE, default {{.offline}})
+        -debug    print debug info (env M2T_DEBUG, default {{.debug}})
         -v        show version
 
     Usage:
-        Vendor package dependencies and then run modules2tuple with vendor/modules.txt:
+        Vendor package dependencies and then run {{.basename}} with vendor/modules.txt:
 
         $ go mod vendor
-        $ modules2tuple vendor/modules.txt
+        $ {{.basename}} vendor/modules.txt
 
     When running in offline mode:
-        - mirrors are looked up using static list and some may be missing
-        - module suffixes ("/v3" etc) are not automatically handled
-        - Github tags for submodules ("v1.2.3" vs "api/v1.2.3") are not automatically
-          resolved
+        - mirrors are looked up using static list and some may not be resolved
+        - milti-module repos and version suffixes ("/v2") are not automatically handled
+        - Github tags for modules ("v1.2.3" vs "api/v1.2.3") are not automatically resolved
         - Gitlab commit IDs are not resolved to the full 40-char IDs
         - post-extract target is not generated
-

@@ -6,9 +6,9 @@ import (
 )
 
 type resolverExample struct {
-	pkg                         string
-	source                      Source
-	account, project, submodule string
+	pkg                      string
+	source                   Source
+	account, project, module string
 }
 
 func TestGithubResolver(t *testing.T) {

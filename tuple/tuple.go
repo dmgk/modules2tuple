@@ -96,34 +96,35 @@ func isFilesystemPath(s string) bool {
 }
 
 type Tuple struct {
-	pkg       string // Go package name
-	version   string // tag or commit ID
-	subdir    string // GH_TUPLE subdir
-	group     string // GH_TUPLE group
-	submodule string // submodule, if any
-	link      string // symlink target, if any
-	source    Source // tuple source (Github ot Gitlab)
-	account   string // source account
-	project   string // source project
-	hidden    bool
+	pkg      string // Go package name
+	version  string // tag or commit ID
+	subdir   string // GH_TUPLE subdir
+	group    string // GH_TUPLE group
+	module   string // module, if any
+	link_src *Tuple // symlink source tuple, if any
+	link_tgt string // symlink target, if any
+	source   Source // tuple source (Github ot Gitlab)
+	account  string // source account
+	project  string // source project
+	hidden   bool
 }
 
 var underscoreRe = regexp.MustCompile(`[^\w]+`)
 
-func (t *Tuple) makeResolved(source Source, account, project, submodule string) {
+func (t *Tuple) makeResolved(source Source, account, project, module string) {
 	t.source = source
 	t.account = account
 	t.project = project
-	t.submodule = submodule
+	t.module = module
 
-	var submoduleBase string
-	if t.submodule != "" {
-		submoduleBase = filepath.Base(t.submodule)
+	var moduleBase string
+	if t.module != "" {
+		moduleBase = filepath.Base(t.module)
 	}
 
 	group := t.account + "_" + t.project
-	if submoduleBase != "" {
-		group = group + "_" + submoduleBase
+	if moduleBase != "" {
+		group = group + "_" + moduleBase
 	}
 	group = underscoreRe.ReplaceAllString(group, "_")
 	group = strings.Trim(group, "_")
@@ -141,31 +142,31 @@ func (t *Tuple) Fix() error {
 
 	switch t.source.(type) {
 	case GithubSource:
-		// If package version is a tag and it's a submodule, call Gihub API to check tags.
-		// Go seem to be able to magically translate tags like "v1.0.4" to the "api/v1.0.4",
-		// lets try to do the same.
-		if strings.HasPrefix(t.version, "v") && t.submodule != "" {
-			tag, err := apis.GithubLookupTag(t.account, t.project, t.submodule, t.version)
+		// If package version is a tag and it's a module in a multi-module repo, call Gihub API
+		// to check tags. Go seem to be able to magically translate tags like "v1.0.4" to the
+		// "api/v1.0.4", lets try to do the same.
+		if strings.HasPrefix(t.version, "v") && t.module != "" {
+			tag, err := apis.GithubLookupTag(t.account, t.project, t.module, t.version)
 			if err != nil {
 				return err
 			}
 			if t.version != tag {
-				debug.Printf("[tuple.Fix] translated Github tag %q to %q\n", t.version, tag)
+				debug.Printf("[Tuple.Fix] translated Github tag %q to %q\n", t.version, tag)
 				t.version = tag
 			}
 		}
-		// If package is a submodule, adjust GH_SUBDIR
+		// If package is a module in a multi-module repo, adjust GH_SUBDIR
 		// NOTE: tag translation has to be done before this
-		if t.submodule != "" {
-			hasContentAtSuffix, err := apis.GithubHasContentsAtPath(t.account, t.project, t.submodule, t.version)
+		if t.module != "" {
+			hasContentAtSuffix, err := apis.GithubHasContentsAtPath(t.account, t.project, t.module, t.version)
 			if err != nil {
 				return err
 			}
 			if hasContentAtSuffix {
 				// Trim suffix from GH_TUPLE subdir because repo already has contents and it'll
 				// be extracted at the correct path.
-				debug.Printf("[tuple.Fix] trimmed submodule suffix %q from %q\n", t.submodule, t.subdir)
-				t.subdir = strings.TrimSuffix(t.subdir, "/"+t.submodule)
+				debug.Printf("[Tuple.Fix] trimmed module suffix %q from %q\n", t.module, t.subdir)
+				t.subdir = strings.TrimSuffix(t.subdir, "/"+t.module)
 			}
 		}
 		// Ports framework doesn't understand tags that have more than 2 path separators in it,
@@ -178,7 +179,7 @@ func (t *Tuple) Fix() error {
 			if len(hash) < 12 {
 				return errors.New("unexpectedly short Githib commit hash")
 			}
-			debug.Printf("[tuple.Fix] translated Github tag %q to %q\n", t.version, hash[:12])
+			debug.Printf("[Tuple.Fix] translated Github tag %q to %q\n", t.version, hash[:12])
 			t.version = hash[:12]
 		}
 	case GitlabSource:
@@ -188,7 +189,7 @@ func (t *Tuple) Fix() error {
 		if err != nil {
 			return err
 		}
-		debug.Printf("[tuple.Fix] translated Gitlab tag %q to %q\n", t.version, hash)
+		debug.Printf("[Tuple.Fix] translated Gitlab tag %q to %q\n", t.version, hash)
 		t.version = hash
 	}
 
@@ -206,12 +207,20 @@ func (t *Tuple) subdirPath() string {
 }
 
 func (t *Tuple) isLinked() bool {
-	return t.link != ""
+	return t.link_tgt != ""
 }
 
 func (t *Tuple) makeLinked() {
 	if !t.isLinked() {
-		t.link = filepath.Join("vendor", t.subdir, t.submodule)
+		t.link_tgt = filepath.Join("vendor", t.subdir, t.module)
+	}
+	t.subdir = ""
+}
+
+func (t *Tuple) makeLinkedAs(src *Tuple) {
+	if !t.isLinked() {
+		t.link_src = src
+		t.link_tgt = filepath.Join("vendor", t.subdir, t.module)
 	}
 	t.subdir = ""
 }
@@ -234,7 +243,7 @@ func (t *Tuple) String() string {
 }
 
 func (t *Tuple) defaultSortKey() string {
-	return fmt.Sprintf("%s %s %s %s %s %s %s", t.source, t.account, t.project, t.version, t.submodule, t.group, t.link)
+	return fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s", t.source, t.account, t.project, t.version, t.module, t.group, t.link_tgt)
 }
 
 type Slice []*Tuple
@@ -249,6 +258,7 @@ func (s Slice) Fix() error {
 		return err
 	}
 	fixSubdirs(s)
+	fixFsNotify(s)
 
 	return nil
 }
@@ -259,11 +269,18 @@ func fixGroups(s Slice) {
 	suffix := 1
 
 	key := func(i int) string {
-		return fmt.Sprintf("%s %s", s[i].group, s[i].subdir)
+		return fmt.Sprintf("%-75s %s", s[i].group, s[i].pkg)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
 	})
+
+	if config.Debug {
+		debug.Print("[fixGroups] sorted slice:\n")
+		for i := range s {
+			debug.Printf("[fixGroups]     %s\n", key(i))
+		}
+	}
 
 	for _, t := range s {
 		if prevGroup == "" {
@@ -271,8 +288,9 @@ func fixGroups(s Slice) {
 			continue
 		}
 		if t.group == prevGroup {
+			oldGroup := t.group
 			t.group = fmt.Sprintf("%s_%d", t.group, suffix)
-			debug.Printf("[fixGroups] deduped group as %q\n", t.group)
+			debug.Printf("[fixGroups] deduped group %q as %q\n", oldGroup, t.group)
 			suffix++
 		} else {
 			prevGroup = t.group
@@ -298,7 +316,7 @@ func fixGithubProjectsAndTags(s Slice) error {
 	}
 
 	key := func(i int) string {
-		return fmt.Sprintf("%T %s %s %s", s[i].source, s[i].account, s[i].project, s[i].version)
+		return fmt.Sprintf("%T:%s:%s:%s", s[i].source, s[i].account, s[i].project, s[i].version)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
@@ -338,16 +356,16 @@ func fixGithubProjectsAndTags(s Slice) error {
 // fixSubdirs ensures that all subdirs are unique and makes symlinks as needed.
 func fixSubdirs(s Slice) {
 	key := func(i int) string {
-		return fmt.Sprintf("%-50s %20s %-30s", s[i].subdir, s[i].version, s[i].submodule)
+		return fmt.Sprintf("%-50s %30s %-30s", s[i].subdir, s[i].version, s[i].module)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
 	})
 
 	if config.Debug {
-		debug.Print("[fixSubdirs] sorted slice dump:\n")
+		debug.Print("[fixSubdirs] sorted slice:\n")
 		for i := range s {
-			debug.Printf("    %s\n", key(i))
+			debug.Printf("[fixSubdirs]     %s\n", key(i))
 		}
 	}
 
@@ -365,16 +383,45 @@ func fixSubdirs(s Slice) {
 		currentSubdir, currentVersion = t.subdir, t.version
 		if prevSubdir == t.subdir {
 			if t.version != prevVersion {
-				debug.Printf("[fixSubdirs] linking %s/%s@%s (parent %s@%s)\n", t.pkg, t.submodule, t.version, prevSubdir, prevVersion)
+				debug.Printf("[fixSubdirs] linking %s/%s@%s (parent %s@%s)\n", t.pkg, t.module, t.version, prevSubdir, prevVersion)
 				t.makeLinked()
 			} else {
-				debug.Printf("[fixSubdirs] hiding %s/%s@%s (parent %s@%s)\n", t.pkg, t.submodule, t.version, prevSubdir, prevVersion)
+				debug.Printf("[fixSubdirs] hiding %s/%s@%s (parent %s@%s)\n", t.pkg, t.module, t.version, prevSubdir, prevVersion)
 				t.hidden = true
 			}
 		} else {
 			prevSubdir = t.subdir
 		}
 		prevSubdir, prevVersion = currentSubdir, currentVersion
+	}
+}
+
+func fixFsNotify(s Slice) {
+	key := func(i int) string {
+		return fmt.Sprintf("%s:%s:%s:%s", s[i].account, s[i].project, s[i].version, s[i].group)
+	}
+	sort.Slice(s, func(i, j int) bool {
+		return key(i) < key(j)
+	})
+
+	const (
+		fsnotifyAccount = "fsnotify"
+		fsnotifyProject = "fsnotify"
+	)
+	var fsnotifyTuple *Tuple
+
+	for _, t := range s {
+		if t.account == fsnotifyAccount && t.project == fsnotifyProject && fsnotifyTuple == nil {
+			fsnotifyTuple = t
+			continue
+		}
+		if fsnotifyTuple != nil {
+			if t.version == fsnotifyTuple.version {
+				t.makeLinkedAs(fsnotifyTuple)
+				t.hidden = true
+				debug.Printf("[fixFsNotify] linking fnotify %s@%s => %s@%s\n", fsnotifyTuple.pkg, fsnotifyTuple.version, t.pkg, t.version)
+			}
+		}
 	}
 }
 
@@ -438,7 +485,7 @@ func (s Slice) Links() Links {
 		}
 	}
 	key := func(i int) string {
-		return res[i].link
+		return res[i].link_tgt
 	}
 	sort.Slice(res, func(i, j int) bool {
 		return key(i) < key(j)
@@ -459,34 +506,43 @@ func (l Links) String() string {
 	}
 
 	var lines []string
-	// dirs := map[string]struct{}{}
+	dirs := map[string]struct{}{}
 
 	for _, t := range l {
-		if t.hidden {
-			continue
-		}
-
 		var b bytes.Buffer
 
-		// dir := filepath.Dir(t.Link)
-		// if dir != "" && dir != "." {
-		//     if _, ok := dirs[dir]; !ok {
-		//         b.WriteString(fmt.Sprintf("\t@${MKDIR} %s\n", filepath.Join("${WRKSRC}", dir)))
-		//         dirs[dir] = struct{}{}
-		//     }
-		// }
+		var src string
+		var need_target_mkdir bool
 
-		src := filepath.Join(fmt.Sprintf("${WRKSRC_%s}", t.group), t.submodule)
-		tgt := filepath.Join("${WRKSRC}", t.link)
-		tgtdir := filepath.Dir(tgt)
+		if t.link_src != nil {
+			src = filepath.Join(fmt.Sprintf("${WRKSRC_%s}", t.link_src.group), t.link_src.module)
+			// symlinking other package under different name, target dir is not guaranteed to exist
+			need_target_mkdir = true
+		} else {
+			src = filepath.Join(fmt.Sprintf("${WRKSRC_%s}", t.group), t.module)
+			// symlinking module under another module, target dir already exists
+			need_target_mkdir = false
+		}
+		tgt := filepath.Join("${WRKSRC}", t.link_tgt)
 
-		debug.Printf("[links.String] rm %s\n", tgt)
-		b.WriteString(fmt.Sprintf("\t@${RM} -r %s\n", tgt))
+		if need_target_mkdir {
+			dir := filepath.Dir(t.link_tgt)
+			if dir != "" && dir != "." {
+				if _, ok := dirs[dir]; !ok {
+					b.WriteString(fmt.Sprintf("\t@${MKDIR} %s\n", filepath.Join("${WRKSRC}", dir)))
+					dirs[dir] = struct{}{}
+				}
+			}
+		}
 
-		debug.Printf("[links.String] ln %s => %s\n", src, tgtdir)
-		b.WriteString(fmt.Sprintf("\t@${RLN} %s %s", src, tgtdir))
+		// symlinking over another module, rm -rf first
+		if t.module != "" {
+			debug.Printf("[Links.String] rm %s\n", tgt)
+			b.WriteString(fmt.Sprintf("\t@${RM} -r %s\n", tgt))
+		}
 
-		// dirs[t.Link] = struct{}{}
+		debug.Printf("[Links.String] ln %s => %s\n", src, tgt)
+		b.WriteString(fmt.Sprintf("\t@${RLN} %s %s", src, tgt))
 
 		lines = append(lines, b.String())
 	}

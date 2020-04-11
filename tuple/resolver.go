@@ -12,13 +12,14 @@ func (err SourceError) Error() string {
 	return string(err)
 }
 
-func Resolve(pkg, version, subdir, link string) (*Tuple, error) {
+// Resolve looks up mirrors and parses tuple account and project.
+func Resolve(pkg, version, subdir, link_target string) (*Tuple, error) {
 	t := &Tuple{
-		pkg:     pkg,
-		version: version,
-		subdir:  subdir,
-		link:    link,
-		group:   "group_name",
+		pkg:      pkg,
+		version:  version,
+		subdir:   subdir,
+		link_tgt: link_target,
+		group:    "group_name",
 	}
 
 	for _, r := range resolvers {
@@ -42,10 +43,10 @@ type mirrorResolver interface {
 }
 
 type mirror struct {
-	source    Source
-	account   string
-	project   string
-	submodule string
+	source  Source
+	account string
+	project string
+	module  string
 }
 
 func (m mirror) resolve(t *Tuple) bool {
@@ -117,12 +118,12 @@ func cloudGoogleComResolver(t *Tuple) bool {
 	if !cloudGoogleComRe.MatchString(t.pkg) {
 		return false
 	}
-	var submodule string
+	var module string
 	sm := cloudGoogleComRe.FindAllStringSubmatch(t.pkg, -1)
 	if len(sm) > 0 {
-		submodule = sm[0][1]
+		module = sm[0][1]
 	}
-	t.makeResolved(GH, "googleapis", "google-cloud-go", submodule)
+	t.makeResolved(GH, "googleapis", "google-cloud-go", module)
 	return true
 }
 
@@ -294,11 +295,11 @@ func tryGithub(t *Tuple) (bool, error) {
 	if len(parts) < 3 {
 		return false, fmt.Errorf("unexpected Github package name: %q", t.pkg)
 	}
-	var submodule string
+	var module string
 	if len(parts) == 4 {
-		submodule = parts[3]
+		module = parts[3]
 	}
-	t.makeResolved(GH, parts[1], parts[2], submodule)
+	t.makeResolved(GH, parts[1], parts[2], module)
 	return true, nil
 }
 
@@ -310,11 +311,11 @@ func tryGitlab(t *Tuple) (bool, error) {
 	if len(parts) < 3 {
 		return false, fmt.Errorf("unexpected Gitlab package name: %q", t.pkg)
 	}
-	var submodule string
+	var module string
 	if len(parts) == 4 {
-		submodule = parts[3]
+		module = parts[3]
 	}
-	t.makeResolved(GL, parts[1], parts[2], submodule)
+	t.makeResolved(GL, parts[1], parts[2], module)
 	return true, nil
 }
 

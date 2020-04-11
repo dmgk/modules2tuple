@@ -17,7 +17,7 @@ const (
 var (
 	GithubUsername string
 	GithubToken    string
-	Offline        = os.Getenv(OfflineKey) == "1"
+	Offline        = os.Getenv(OfflineKey) != ""
 	Debug          = os.Getenv(DebugKey) != ""
 	ShowVersion    = false
 )
@@ -26,6 +26,7 @@ var usageTemplate = template.Must(template.New("Usage").Parse(`usage: {{.basenam
 
 Options:
     -offline  disable all network access (env M2T_OFFLINE, default {{.offline}})
+    -debug    print debug info (env M2T_DEBUG, default {{.debug}})
     -v        show version
 
 Usage:
@@ -35,12 +36,11 @@ Usage:
     $ {{.basename}} vendor/modules.txt
 
 When running in offline mode:
-    - mirrors are looked up using static list and some may be missing
-    - module suffixes ("/v3" etc) are not automatically handled
-    - Github tags for submodules ("v1.2.3" vs "api/v1.2.3") are not automatically
-      resolved
+    - mirrors are looked up using static list and some may not be resolved
+    - milti-module repos and version suffixes ("/v2") are not automatically handled
+    - Github tags for modules ("v1.2.3" vs "api/v1.2.3") are not automatically resolved
     - Gitlab commit IDs are not resolved to the full 40-char IDs
-	- post-extract target is not generated
+    - post-extract target is not generated
 `))
 
 func init() {
@@ -63,6 +63,7 @@ func init() {
 		err := usageTemplate.Execute(os.Stderr, map[string]interface{}{
 			"basename": basename,
 			"offline":  Offline,
+			"debug":    Debug,
 		})
 		if err != nil {
 			panic(err)
