@@ -3,9 +3,8 @@ all: build
 build:
 	@go build
 
-test: all
-	go test -tags=online ./...
-	./e2e.sh
+test:
+	go test -tags=online,e2e ./...
 
 install:
 	@go install

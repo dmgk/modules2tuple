@@ -1,4 +1,4 @@
-// +build !online
+// +build !online,!e2e
 
 package parser
 

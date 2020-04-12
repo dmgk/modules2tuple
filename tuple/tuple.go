@@ -106,7 +106,7 @@ type Tuple struct {
 	source   Source // tuple source (Github ot Gitlab)
 	account  string // source account
 	project  string // source project
-	hidden   bool
+	hidden   bool   // if true, tuple will be excluded from G{H,L}_TUPLE
 }
 
 var underscoreRe = regexp.MustCompile(`[^\w]+`)
@@ -363,14 +363,6 @@ func fixGithubProjectsAndTags(s Slice) error {
 	return nil
 }
 
-// func reverseVersion(v string) string {
-//     parts := strings.Split(v, "/")
-//     for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
-//         parts[i], parts[j] = parts[j], parts[i]
-//     }
-//     return strings.Join(parts, "/")
-// }
-
 // fixSubdirs ensures that all subdirs are unique and makes symlinks as needed.
 func fixSubdirs(s Slice) {
 	var maxSubdir, maxVersion, maxModule int
@@ -427,6 +419,8 @@ func fixSubdirs(s Slice) {
 	}
 }
 
+// fixFsNotify takes care of fsnotify annoying ability to appear under multiple different import paths.
+// github.com/fsnotify/fsnotify is the canonical package name.
 func fixFsNotify(s Slice) {
 	key := func(i int) string {
 		return fmt.Sprintf("%s:%s:%s:%s", s[i].account, s[i].project, s[i].version, s[i].group)
@@ -460,6 +454,7 @@ func fixFsNotify(s Slice) {
 // Otherwise omit the first line continuation for more compact representation.
 const largeLimit = 3
 
+// String returns G{H,L}_TUPLE variables contents.
 func (s Slice) String() string {
 	sort.Slice(s, func(i, j int) bool {
 		return s[i].defaultSortKey() < s[j].defaultSortKey()
@@ -507,6 +502,7 @@ func (s Slice) String() string {
 
 type Links []*Tuple
 
+// Links returns a slice of tuples that require symlinking.
 func (s Slice) Links() Links {
 	var res Links
 
@@ -525,7 +521,7 @@ func (s Slice) Links() Links {
 	return res
 }
 
-// String generates "post-extract" target that creates required symlinks.
+// String returns "post-extract" target contents.
 func (l Links) String() string {
 	if len(l) == 0 {
 		return ""
