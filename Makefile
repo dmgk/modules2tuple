@@ -5,7 +5,7 @@ build:
 
 test: all
 	go test -tags=online ./...
-	./test.sh
+	./e2e.sh
 
 install:
 	@go install

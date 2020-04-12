@@ -3,7 +3,13 @@ package tuple
 import (
 	"strings"
 	"testing"
+
+	"github.com/dmgk/modules2tuple/config"
 )
+
+func init() {
+	config.Offline = true
+}
 
 func TestParseRegularSpec(t *testing.T) {
 	examples := [][]string{

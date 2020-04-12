@@ -10,4 +10,5 @@ for given in testdata/*_modules.txt; do
 
     ./modules2tuple ${given} > ${actual}
     diff -u ${expected} ${actual}
+    rm ${actual}
 done

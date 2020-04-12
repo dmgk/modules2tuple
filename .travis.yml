@@ -4,3 +4,5 @@ language: go
 go:
   - 1.x
   - tip
+
+script: make test

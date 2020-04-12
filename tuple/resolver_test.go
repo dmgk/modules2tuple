@@ -3,7 +3,13 @@ package tuple
 import (
 	"fmt"
 	"testing"
+
+	"github.com/dmgk/modules2tuple/config"
 )
+
+func init() {
+	config.Offline = true
+}
 
 type resolverExample struct {
 	pkg                      string

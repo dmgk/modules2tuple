@@ -5,7 +5,13 @@ package parser
 import (
 	"strings"
 	"testing"
+
+	"github.com/dmgk/modules2tuple/config"
 )
+
+func init() {
+	config.Offline = false
+}
 
 func TestUniqueProjectAndTag(t *testing.T) {
 	given := `
