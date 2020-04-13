@@ -55,7 +55,7 @@ func Resolve(pkg, version, subdir, link_target string) (*Tuple, error) {
 		done = true
 	}
 
-	return nil, SourceError(t.String())
+	return nil, SourceError(fmt.Sprintf("%s (from %s@%s)", t.String(), pkg, version))
 }
 
 type mirror struct {

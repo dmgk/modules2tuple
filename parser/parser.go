@@ -138,7 +138,7 @@ func (r *Result) String() string {
 
 	if len(r.errOther) > 0 {
 		var b bytes.Buffer
-		b.WriteString("\t\t# Other errors found during processing:\n")
+		b.WriteString("\t\t# Errors found during processing:\n")
 		b.WriteString(errSlice(r.errOther).String())
 		lines = append(lines, b.String())
 	}

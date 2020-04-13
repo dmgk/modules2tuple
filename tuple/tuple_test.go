@@ -106,7 +106,7 @@ func TestPackageReplace(t *testing.T) {
 	for i, x := range examples {
 		tuple, err := Parse(x[0])
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("%T: %v", err, err)
 		}
 		s := tuple.String()
 		if s != x[1] {

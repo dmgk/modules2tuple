@@ -123,7 +123,7 @@ func GithubLookupTag(account, project, path, tag string) (string, error) {
 func GithubHasContentsAtPath(account, project, path, tag string) (bool, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/contents/%s?ref=%s", url.PathEscape(account), url.PathEscape(project), path, tag)
 
-	// Ignore reponse, we care only about errors
+	// Ignore response, we care only about errors
 	_, err := get(url, config.GithubUsername, config.GithubToken)
 	if err != nil && err != errNotFound {
 		return false, err
