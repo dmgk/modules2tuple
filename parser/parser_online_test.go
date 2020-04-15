@@ -27,6 +27,6 @@ func TestUniqueProjectAndTag(t *testing.T) {
 	}
 	out := tt.String()
 	if out != expected {
-		t.Errorf("expected output\n%s, got\n%s", expected, out)
+		t.Errorf("expected output\n%s\n, got\n%s", expected, out)
 	}
 }
