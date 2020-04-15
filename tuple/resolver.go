@@ -92,7 +92,7 @@ var resolvers = map[string]resolver{
 	"docker.io/go-docker":         &mirror{GH, "docker", "go-docker", ""},
 	"git.apache.org/thrift.git":   &mirror{GH, "apache", "thrift", ""},
 	"go.bug.st/serial.v1":         &mirror{GH, "bugst", "go-serial", ""},
-	"go.elastic.co/apm":           &mirror{GH, "elastic", "apm-agent-go", ""},
+	"go.elastic.co/apm":           mirrorFn(goElasticCoResolver),
 	"go.elastic.co/fastjson":      &mirror{GH, "elastic", "go-fastjson", ""},
 	"go.etcd.io":                  mirrorFn(goEtcdIoResolver),
 	"go.mongodb.org/mongo-driver": &mirror{GH, "mongodb", "mongo-go-driver", ""},
@@ -163,7 +163,7 @@ func bazilOrgResolver(pkg string) (*mirror, error) {
 }
 
 // cloud.google.com/go/* -> github.com/googleapis/google-cloud-go
-var cloudGoogleComRe = regexp.MustCompile(`\Acloud\.google\.com/go/?(([0-9A-Za-z][-0-9A-Za-z]+))?\z`)
+var cloudGoogleComRe = regexp.MustCompile(`\Acloud\.google\.com/go(?:/([0-9A-Za-z][-0-9A-Za-z]+))?\z`)
 
 func cloudGoogleComResolver(pkg string) (*mirror, error) {
 	if !cloudGoogleComRe.MatchString(pkg) {
@@ -189,6 +189,22 @@ func codeCloudfoundryOrgResolver(pkg string) (*mirror, error) {
 		return nil, nil
 	}
 	return &mirror{GH, "cloudfoundry", sm[0][1], ""}, nil
+}
+
+// go.elastic.co/apm -> github.com/elastic/apm-agent-go
+// go.elastic.co/apm/module/apmhttp -> github.com/elastic/apm-agent-go/module/apmhttp
+var goElasticCoModuleRe = regexp.MustCompile(`\Ago\.elastic\.co/apm(?:/(module/[0-9A-Za-z][-0-9A-Za-z]+))?\z`)
+
+func goElasticCoResolver(pkg string) (*mirror, error) {
+	if !goElasticCoModuleRe.MatchString(pkg) {
+		return nil, nil
+	}
+	var module string
+	sm := goElasticCoModuleRe.FindAllStringSubmatch(pkg, -1)
+	if len(sm) > 0 {
+		module = sm[0][1]
+	}
+	return &mirror{GH, "elastic", "apm-agent-go", module}, nil
 }
 
 // go.etcd.io/etcd -> github.com/etcd-io/etcd

@@ -34,8 +34,6 @@ func Parse(spec string) (*Tuple, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("====> left %s %s\n", leftPkg, leftVersion)
-		fmt.Printf("====> right %s %s\n", rightPkg, rightVersion)
 
 		// https://github.com/golang/go/wiki/Modules#when-should-i-use-the-replace-directive
 		if isFilesystemPath(rightPkg) {

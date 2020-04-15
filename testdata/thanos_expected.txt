@@ -30,8 +30,6 @@ GH_TUPLE=	\
 		dominikh:go-tools:v0.0.1-2019.2.3:dominikh_go_tools/vendor/honnef.co/go/tools \
 		edsrzf:mmap-go:v1.0.0:edsrzf_mmap_go/vendor/github.com/edsrzf/mmap-go \
 		elastic:apm-agent-go:v1.5.0:elastic_apm_agent_go/vendor/go.elastic.co/apm \
-		elastic:apm-agent-go:v1.5.0:elastic_apm_agent_go_1/vendor/go.elastic.co/apm/module/apmhttp \
-		elastic:apm-agent-go:v1.5.0:elastic_apm_agent_go_2/vendor/go.elastic.co/apm/module/apmot \
 		elastic:go-fastjson:v1.0.0:elastic_go_fastjson/vendor/go.elastic.co/fastjson \
 		elastic:go-sysinfo:v1.1.1:elastic_go_sysinfo/vendor/github.com/elastic/go-sysinfo \
 		elastic:go-windows:v1.0.1:elastic_go_windows/vendor/github.com/elastic/go-windows \
