@@ -85,6 +85,7 @@ var resolvers = map[string]resolver{
 
 	"contrib.go.opencensus.io/exporter/ocagent": &mirror{GH, "census-ecosystem", "opencensus-go-exporter-ocagent", ""},
 
+	"aletheia.icu/broccoli/fs":    &mirror{GH, "aletheia-icu", "broccoli", "fs"},
 	"bazil.org":                   mirrorFn(bazilOrgResolver),
 	"camlistore.org":              &mirror{GH, "perkeep", "perkeep", ""},
 	"cloud.google.com":            mirrorFn(cloudGoogleComResolver),
