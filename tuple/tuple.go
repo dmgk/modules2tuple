@@ -322,7 +322,7 @@ func fixGithubProjectsAndTags(s Slice) error {
 	}
 
 	key := func(i int) string {
-		return fmt.Sprintf("%T:%s:%s:%s", s[i].source, s[i].account, s[i].project, s[i].version)
+		return fmt.Sprintf("%T:%s:%s:%s", s[i].source, s[i].project, s[i].version, s[i].account)
 	}
 	sort.Slice(s, func(i, j int) bool {
 		return key(i) < key(j)
@@ -340,20 +340,24 @@ func fixGithubProjectsAndTags(s Slice) error {
 			continue
 		}
 
-		if t.account != prevTuple.account {
-			// different Account, same Project and Version
-			if t.project == prevTuple.project && t.version == prevTuple.version {
-				hash, err := apis.GithubGetCommit(t.account, t.project, t.version)
-				if err != nil {
-					return DuplicateProjectAndTag(t.String())
-				}
-				if len(hash) < 12 {
-					return errors.New("unexpectedly short Githib commit hash")
-				}
-				debug.Printf("[fixGithubProjectsAndTags] translated Github tag %q to %q\n", t.version, hash[:12])
-				t.version = hash[:12]
+		if t.project == prevTuple.project && t.version == prevTuple.version && t.module == prevTuple.module {
+			// same Project and Version, different Account
+			if t.account != prevTuple.account {
+				// hash, err := apis.GithubGetCommit(t.account, t.project, t.version)
+				// if err != nil {
+				// 	return DuplicateProjectAndTag(t.String())
+				// }
+				// if len(hash) < 12 {
+				// 	return errors.New("unexpectedly short Githib commit hash")
+				// }
+				// debug.Printf("[fixGithubProjectsAndTags] translated Github tag %q to %q\n", t.version, hash[:12])
+				// t.version = hash[:12]
+
+				// dont bother with replacing tag with commit hash, just link to prev tuple
+				t.makeLinkedAs(prevTuple)
 			}
 		}
+		prevTuple = t
 	}
 
 	return nil
@@ -408,8 +412,6 @@ func fixSubdirs(s Slice) {
 				debug.Printf("[fixSubdirs] hiding %s/%s@%s (parent %s@%s)\n", t.pkg, t.module, t.version, prevSubdir, prevVersion)
 				t.hidden = true
 			}
-		} else {
-			prevSubdir = t.subdir
 		}
 		prevSubdir, prevVersion = currentSubdir, currentVersion
 	}
