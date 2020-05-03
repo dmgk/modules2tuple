@@ -108,7 +108,7 @@ var resolvers = map[string]resolver{
 	"google.golang.org/genproto":  &mirror{GH, "google", "go-genproto", ""},
 	"google.golang.org/grpc":      &mirror{GH, "grpc", "grpc-go", ""},
 	"gopkg.in":                    mirrorFn(gopkgInResolver),
-	"gotest.tools":                &mirror{GH, "gotestyourself", "gotest.tools", ""},
+	"gotest.tools":                mirrorFn(gotestToolsResolver),
 	"honnef.co/go/tools":          &mirror{GH, "dominikh", "go-tools", ""},
 	"howett.net/plist":            &mirror{GitlabSource("https://gitlab.howett.net"), "go", "plist", ""},
 	"k8s.io":                      mirrorFn(k8sIoResolver),
@@ -332,4 +332,17 @@ func rscIoResolver(pkg string) (*mirror, error) {
 		return nil, nil
 	}
 	return &mirror{GH, "rsc", sm[0][1], ""}, nil
+}
+
+func gotestToolsResolver(pkg string) (*mirror, error) {
+	if !strings.HasPrefix(pkg, "gotest.tools") {
+		return nil, nil
+	}
+	switch pkg {
+	case "gotest.tools":
+		return &mirror{GH, "gotestyourself", "gotest.tools", ""}, nil
+	case "gotest.tools/gotestsum":
+		return &mirror{GH, "gotestyourself", "gotestsum", ""}, nil
+	}
+	return nil, nil
 }

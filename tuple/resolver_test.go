@@ -221,10 +221,19 @@ func TestMvdanCcResolver(t *testing.T) {
 	testResolverFnExamples(t, "mvdanCcResolver", mvdanCcResolver, examples)
 }
 
-func TesteRscIoResolver(t *testing.T) {
+func TestRscIoResolver(t *testing.T) {
 	examples := []resolverExample{
 		// name, expected account, expected project
 		{"rsc.io/pdf", GH, "rsc", "pdf", ""},
 	}
 	testResolverFnExamples(t, "rscIoResolver", rscIoResolver, examples)
+}
+
+func TestGotestToolsResolver(t *testing.T) {
+	examples := []resolverExample{
+		// name, expected account, expected project
+		{"gotest.tools", GH, "gotestyourself", "gotest.tools", ""},
+		{"gotest.tools/gotestsum", GH, "gotestyourself", "gotestsum", ""},
+	}
+	testResolverFnExamples(t, "gotestToolsResolver", gotestToolsResolver, examples)
 }
