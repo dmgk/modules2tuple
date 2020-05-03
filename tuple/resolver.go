@@ -112,6 +112,7 @@ var resolvers = map[string]resolver{
 	"honnef.co/go/tools":          &mirror{GH, "dominikh", "go-tools", ""},
 	"howett.net/plist":            &mirror{GitlabSource("https://gitlab.howett.net"), "go", "plist", ""},
 	"k8s.io":                      mirrorFn(k8sIoResolver),
+	"launchpad.net/gocheck":       &mirror{GH, "go-check", "check", ""},
 	"layeh.com/radius":            &mirror{GH, "layeh", "radius", ""},
 	"mvdan.cc":                    mirrorFn(mvdanCcResolver),
 	"rsc.io":                      mirrorFn(rscIoResolver),

@@ -53,9 +53,6 @@ func TestParseRegularSpecFail(t *testing.T) {
 	examples := [][]string{
 		// spec, expected error
 
-		// missing version
-		{"github.com/pkg/errors", "unexpected spec format"},
-
 		// extra stuff
 		{"github.com/pkg/errors v1.0.0 v2.0.0", "unexpected number of fields"},
 
@@ -111,28 +108,6 @@ func TestPackageReplace(t *testing.T) {
 		s := tuple.String()
 		if s != x[1] {
 			t.Errorf("(%d) expected replaced package String() to return\n%s\ngot\n%s", i, x[1], s)
-		}
-	}
-}
-
-func TestPackageReplaceFail(t *testing.T) {
-	examples := [][]string{
-		// spec, expected error
-
-		// // missing version in the left spec
-		// {"github.com/hashicorp/consul/api => ./api", "unexpected spec format"},
-
-		// missing version in the right spec
-		{"github.com/spf13/cobra v0.0.0-20180412120829-615425954c3b => github.com/rsteube/cobra", "unexpected spec format"},
-	}
-
-	for i, x := range examples {
-		_, err := Parse(x[0])
-		if err == nil {
-			t.Fatal("expected err to not be nil")
-		}
-		if !strings.HasPrefix(err.Error(), x[1]) {
-			t.Errorf("(%d) expected err to start with %q, got %q", i, x[1], err.Error())
 		}
 	}
 }

@@ -70,11 +70,7 @@ func parseSpec(spec string) (string, string, error) {
 
 	switch len(parts) {
 	case 1:
-		// must be a versionless local filesystem "replace" spec rhs
-		if isFilesystemPath(parts[0]) {
-			return parts[0], "", nil
-		}
-		return "", "", fmt.Errorf("unexpected spec format: %q", spec)
+		return parts[0], "", nil
 	case 2:
 		// regular spec
 		if tagRx.MatchString(parts[1]) {
