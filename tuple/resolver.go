@@ -335,9 +335,6 @@ func rscIoResolver(pkg string) (*mirror, error) {
 }
 
 func gotestToolsResolver(pkg string) (*mirror, error) {
-	if !strings.HasPrefix(pkg, "gotest.tools") {
-		return nil, nil
-	}
 	switch pkg {
 	case "gotest.tools":
 		return &mirror{GH, "gotestyourself", "gotest.tools", ""}, nil
