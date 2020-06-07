@@ -103,6 +103,7 @@ var resolvers = map[string]resolver{
 	"go4.org":                     &mirror{GH, "go4org", "go4", ""},
 	"gocloud.dev":                 &mirror{GH, "google", "go-cloud", ""},
 	"golang.org":                  mirrorFn(golangOrgResolver),
+	"golang.zx2c4.com/wireguard":  &mirror{GH, "wireguard", "wireguard-go", ""},
 	"google.golang.org/api":       &mirror{GH, "googleapis", "google-api-go-client", ""},
 	"google.golang.org/appengine": &mirror{GH, "golang", "appengine", ""},
 	"google.golang.org/genproto":  &mirror{GH, "google", "go-genproto", ""},
