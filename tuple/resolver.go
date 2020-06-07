@@ -107,6 +107,7 @@ var resolvers = map[string]resolver{
 	"google.golang.org/appengine": &mirror{GH, "golang", "appengine", ""},
 	"google.golang.org/genproto":  &mirror{GH, "google", "go-genproto", ""},
 	"google.golang.org/grpc":      &mirror{GH, "grpc", "grpc-go", ""},
+	"google.golang.org/protobuf":  &mirror{GH, "protocolbuffers", "protobuf-go", ""},
 	"gopkg.in":                    mirrorFn(gopkgInResolver),
 	"gotest.tools":                mirrorFn(gotestToolsResolver),
 	"honnef.co/go/tools":          &mirror{GH, "dominikh", "go-tools", ""},
