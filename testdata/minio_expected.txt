@@ -88,8 +88,6 @@ GH_TUPLE=	\
 		matttproud:golang_protobuf_extensions:v1.0.1:matttproud_golang_protobuf_extensions/vendor/github.com/matttproud/golang_protobuf_extensions \
 		miekg:dns:v1.1.8:miekg_dns/vendor/github.com/miekg/dns \
 		minio:cli:v1.22.0:minio_cli/vendor/github.com/minio/cli \
-		minio:gokrb5:v7.2.5:minio_gokrb5_v7/vendor/github.com/minio/gokrb5/v7 \
-		minio:hdfs:v3.0.1:minio_hdfs_v3/vendor/github.com/minio/hdfs/v3 \
 		minio:highwayhash:v1.0.0:minio_highwayhash/vendor/github.com/minio/highwayhash \
 		minio:lsync:v1.0.1:minio_lsync/vendor/github.com/minio/lsync \
 		minio:minio-go:v6.0.52:minio_minio_go_v6/vendor/github.com/minio/minio-go/v6 \

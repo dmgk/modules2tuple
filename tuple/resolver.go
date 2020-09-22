@@ -89,7 +89,7 @@ var resolvers = map[string]resolver{
 	"bazil.org":                   mirrorFn(bazilOrgResolver),
 	"camlistore.org":              &mirror{GH, "perkeep", "perkeep", ""},
 	"cloud.google.com":            mirrorFn(cloudGoogleComResolver),
-	"code.cloudfoundry.org":       mirrorFn(codeCloudfoundryOrgResolver),
+//	"code.cloudfoundry.org":       mirrorFn(codeCloudfoundryOrgResolver),
 	"docker.io/go-docker":         &mirror{GH, "docker", "go-docker", ""},
 	"git.apache.org/thrift.git":   &mirror{GH, "apache", "thrift", ""},
 	"go.bug.st/serial.v1":         &mirror{GH, "bugst", "go-serial", ""},

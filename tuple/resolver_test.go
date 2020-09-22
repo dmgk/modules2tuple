@@ -153,13 +153,13 @@ func TestCloudGoogleComResolver(t *testing.T) {
 	testResolverFnExamples(t, "cloudGoogleComResolver", cloudGoogleComResolver, examples)
 }
 
-func TestCodeCloudfoundryOrgResolver(t *testing.T) {
-	examples := []resolverExample{
-		// name, expected account, expected project
-		{"code.cloudfoundry.org/gofileutils", GH, "cloudfoundry", "gofileutils", ""},
-	}
-	testResolverFnExamples(t, "codeCloudfoundryOrgResolver", codeCloudfoundryOrgResolver, examples)
-}
+// func TestCodeCloudfoundryOrgResolver(t *testing.T) {
+// 	examples := []resolverExample{
+// 		// name, expected account, expected project
+// 		{"code.cloudfoundry.org/gofileutils", GH, "cloudfoundry", "gofileutils", ""},
+// 	}
+// 	testResolverFnExamples(t, "codeCloudfoundryOrgResolver", codeCloudfoundryOrgResolver, examples)
+// }
 
 func TestGoEtcdIoResolver(t *testing.T) {
 	examples := []resolverExample{
