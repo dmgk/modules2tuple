@@ -13,10 +13,10 @@ GH_TUPLE=	\
 		TRON-US:go-btfs-cmds:v0.1.6:tron_us_go_btfs_cmds/vendor/github.com/TRON-US/go-btfs-cmds \
 		TRON-US:go-btfs-config:v0.5.2:tron_us_go_btfs_config/vendor/github.com/TRON-US/go-btfs-config \
 		TRON-US:go-btfs-files:v0.1.6:tron_us_go_btfs_files/vendor/github.com/TRON-US/go-btfs-files \
-		TRON-US:go-cid:v0.1.0:tron_us_go_cid_1/vendor/github.com/ipfs/go-cid \
+		TRON-US:go-cid:v0.1.0:tron_us_go_cid/vendor/github.com/ipfs/go-cid \
 		TRON-US:go-eccrypto:v0.0.1:tron_us_go_eccrypto/vendor/github.com/TRON-US/go-eccrypto \
 		TRON-US:go-ipld-format:v0.1.0:tron_us_go_ipld_format/vendor/github.com/ipfs/go-ipld-format \
-		TRON-US:go-libp2p-core:v0.4.1:tron_us_go_libp2p_core_1/vendor/github.com/libp2p/go-libp2p-core \
+		TRON-US:go-libp2p-core:v0.4.1:tron_us_go_libp2p_core/vendor/github.com/libp2p/go-libp2p-core \
 		TRON-US:go-mfs:v0.2.2:tron_us_go_mfs/vendor/github.com/TRON-US/go-mfs \
 		TRON-US:go-unixfs:v0.5.9:tron_us_go_unixfs/vendor/github.com/TRON-US/go-unixfs \
 		TRON-US:interface-go-btfs-core:v0.5.4:tron_us_interface_go_btfs_core/vendor/github.com/TRON-US/interface-go-btfs-core \

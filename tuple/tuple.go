@@ -249,11 +249,11 @@ func (s Slice) Fix() error {
 		return nil
 	}
 
-	fixGroups(s)
 	if err := fixGithubProjectsAndTags(s); err != nil {
 		return err
 	}
 	fixSubdirs(s)
+	fixGroups(s)
 	fixFsNotify(s)
 
 	return nil
@@ -291,6 +291,9 @@ func fixGroups(s Slice) {
 	for _, t := range s {
 		if prevGroup == "" {
 			prevGroup = t.group
+			continue
+		}
+		if t.hidden {
 			continue
 		}
 		if t.group == prevGroup {
@@ -358,6 +361,37 @@ func fixGithubProjectsAndTags(s Slice) error {
 			}
 		}
 		prevTuple = t
+	}
+
+	key = func(i int) string {
+		return fmt.Sprintf("%T:%s:%s:%s:%s", s[i].source, s[i].account, s[i].project, s[i].version, s[i].subdir)
+	}
+	sort.Slice(s, func(i, j int) bool {
+		return key(i) < key(j)
+	})
+
+	var prevSubdir string
+
+	for _, t := range s {
+		if t.source != GH {
+			continue // not a Github tuple, skip
+		}
+
+		if prevTuple == nil {
+			prevTuple = t
+			prevSubdir = t.subdir
+			continue
+		}
+
+		// same Account, Project and Version, and package is a subdir of previous tuple
+		if t.account == prevTuple.account && t.project == prevTuple.project && t.version == prevTuple.version {
+			if t.subdir != prevSubdir && strings.HasPrefix(t.subdir, prevSubdir+"/") {
+				t.hidden = true
+				continue
+			}
+		}
+		prevTuple = t
+		prevSubdir = t.subdir
 	}
 
 	return nil
