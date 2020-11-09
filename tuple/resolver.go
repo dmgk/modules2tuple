@@ -28,9 +28,9 @@ func Resolve(pkg, version, subdir, link_target string) (*Tuple, error) {
 	var done bool
 	for {
 		// try static mirror lookup first
-		for k, r := range resolvers {
-			if strings.HasPrefix(pkg, k) {
-				m, err := r.resolve(pkg)
+		for _, r := range resolvers {
+			if strings.HasPrefix(pkg, r.prefix) {
+				m, err := r.resolver.resolve(pkg)
 				if err != nil {
 					return nil, err
 				}
@@ -79,47 +79,51 @@ func (f mirrorFn) resolve(pkg string) (*mirror, error) {
 	return f(pkg)
 }
 
-var resolvers = map[string]resolver{
-	"github.com": mirrorFn(githubResolver),
-	"gitlab.com": mirrorFn(gitlabResolver),
+var resolvers = []struct {
+	prefix   string
+	resolver resolver
+}{
+	// Docker is a special snowflake
+	{"github.com/docker/docker", &mirror{GH, "moby", "moby", ""}},
 
-	"contrib.go.opencensus.io/exporter/ocagent": &mirror{GH, "census-ecosystem", "opencensus-go-exporter-ocagent", ""},
+	{"github.com", mirrorFn(githubResolver)},
+	{"gitlab.com", mirrorFn(gitlabResolver)},
 
-	"aletheia.icu/broccoli/fs":    &mirror{GH, "aletheia-icu", "broccoli", "fs"},
-	"bazil.org":                   mirrorFn(bazilOrgResolver),
-	"camlistore.org":              &mirror{GH, "perkeep", "perkeep", ""},
-	"cloud.google.com":            mirrorFn(cloudGoogleComResolver),
-//	"code.cloudfoundry.org":       mirrorFn(codeCloudfoundryOrgResolver),
-	"docker.io/go-docker":         &mirror{GH, "docker", "go-docker", ""},
-	"git.apache.org/thrift.git":   &mirror{GH, "apache", "thrift", ""},
-	"go.bug.st/serial.v1":         &mirror{GH, "bugst", "go-serial", ""},
-	"go.elastic.co/apm":           mirrorFn(goElasticCoResolver),
-	"go.elastic.co/fastjson":      &mirror{GH, "elastic", "go-fastjson", ""},
-	"go.etcd.io":                  mirrorFn(goEtcdIoResolver),
-	"go.mongodb.org/mongo-driver": &mirror{GH, "mongodb", "mongo-go-driver", ""},
-	"go.mozilla.org":              mirrorFn(goMozillaOrgResolver),
-	"go.opencensus.io":            &mirror{GH, "census-instrumentation", "opencensus-go", ""},
-	"go.uber.org":                 mirrorFn(goUberOrgResolver),
-	"go4.org":                     &mirror{GH, "go4org", "go4", ""},
-	"gocloud.dev":                 &mirror{GH, "google", "go-cloud", ""},
-	"golang.org":                  mirrorFn(golangOrgResolver),
-	"golang.zx2c4.com/wireguard":  &mirror{GH, "wireguard", "wireguard-go", ""},
-	"google.golang.org/api":       &mirror{GH, "googleapis", "google-api-go-client", ""},
-	"google.golang.org/appengine": &mirror{GH, "golang", "appengine", ""},
-	"google.golang.org/genproto":  &mirror{GH, "google", "go-genproto", ""},
-	"google.golang.org/grpc":      &mirror{GH, "grpc", "grpc-go", ""},
-	"google.golang.org/protobuf":  &mirror{GH, "protocolbuffers", "protobuf-go", ""},
-	"gopkg.in":                    mirrorFn(gopkgInResolver),
-	"gotest.tools":                mirrorFn(gotestToolsResolver),
-	"honnef.co/go/tools":          &mirror{GH, "dominikh", "go-tools", ""},
-	"howett.net/plist":            &mirror{GitlabSource("https://gitlab.howett.net"), "go", "plist", ""},
-	"k8s.io":                      mirrorFn(k8sIoResolver),
-	"launchpad.net/gocheck":       &mirror{GH, "go-check", "check", ""},
-	"layeh.com/radius":            &mirror{GH, "layeh", "radius", ""},
-	"mvdan.cc":                    mirrorFn(mvdanCcResolver),
-	"rsc.io":                      mirrorFn(rscIoResolver),
-	"sigs.k8s.io/yaml":            &mirror{GH, "kubernetes-sigs", "yaml", ""},
-	"tinygo.org/x/go-llvm":        &mirror{GH, "tinygo-org", "go-llvm", ""},
+	{"contrib.go.opencensus.io/exporter/ocagent", &mirror{GH, "census-ecosystem", "opencensus-go-exporter-ocagent", ""}},
+	{"aletheia.icu/broccoli/fs", &mirror{GH, "aletheia-icu", "broccoli", "fs"}},
+	{"bazil.org", mirrorFn(bazilOrgResolver)},
+	{"camlistore.org", &mirror{GH, "perkeep", "perkeep", ""}},
+	{"cloud.google.com", mirrorFn(cloudGoogleComResolver)},
+	{"docker.io/go-docker", &mirror{GH, "docker", "go-docker", ""}},
+	{"git.apache.org/thrift.git", &mirror{GH, "apache", "thrift", ""}},
+	{"go.bug.st/serial.v1", &mirror{GH, "bugst", "go-serial", ""}},
+	{"go.elastic.co/apm", mirrorFn(goElasticCoResolver)},
+	{"go.elastic.co/fastjson", &mirror{GH, "elastic", "go-fastjson", ""}},
+	{"go.etcd.io", mirrorFn(goEtcdIoResolver)},
+	{"go.mongodb.org/mongo-driver", &mirror{GH, "mongodb", "mongo-go-driver", ""}},
+	{"go.mozilla.org", mirrorFn(goMozillaOrgResolver)},
+	{"go.opencensus.io", &mirror{GH, "census-instrumentation", "opencensus-go", ""}},
+	{"go.uber.org", mirrorFn(goUberOrgResolver)},
+	{"go4.org", &mirror{GH, "go4org", "go4", ""}},
+	{"gocloud.dev", &mirror{GH, "google", "go-cloud", ""}},
+	{"golang.org", mirrorFn(golangOrgResolver)},
+	{"golang.zx2c4.com/wireguard", &mirror{GH, "wireguard", "wireguard-go", ""}},
+	{"google.golang.org/api", &mirror{GH, "googleapis", "google-api-go-client", ""}},
+	{"google.golang.org/appengine", &mirror{GH, "golang", "appengine", ""}},
+	{"google.golang.org/genproto", &mirror{GH, "google", "go-genproto", ""}},
+	{"google.golang.org/grpc", &mirror{GH, "grpc", "grpc-go", ""}},
+	{"google.golang.org/protobuf", &mirror{GH, "protocolbuffers", "protobuf-go", ""}},
+	{"gopkg.in", mirrorFn(gopkgInResolver)},
+	{"gotest.tools", mirrorFn(gotestToolsResolver)},
+	{"honnef.co/go/tools", &mirror{GH, "dominikh", "go-tools", ""}},
+	{"howett.net/plist", &mirror{GitlabSource("https://gitlab.howett.net"), "go", "plist", ""}},
+	{"k8s.io", mirrorFn(k8sIoResolver)},
+	{"launchpad.net/gocheck", &mirror{GH, "go-check", "check", ""}},
+	{"layeh.com/radius", &mirror{GH, "layeh", "radius", ""}},
+	{"mvdan.cc", mirrorFn(mvdanCcResolver)},
+	{"rsc.io", mirrorFn(rscIoResolver)},
+	{"sigs.k8s.io/yaml", &mirror{GH, "kubernetes-sigs", "yaml", ""}},
+	{"tinygo.org/x/go-llvm", &mirror{GH, "tinygo-org", "go-llvm", ""}},
 }
 
 func githubResolver(pkg string) (*mirror, error) {
@@ -181,19 +185,19 @@ func cloudGoogleComResolver(pkg string) (*mirror, error) {
 	return &mirror{GH, "googleapis", "google-cloud-go", module}, nil
 }
 
-// code.cloudfoundry.org/gofileutils -> github.com/cloudfoundry/gofileutils
-var codeCloudfoundryOrgRe = regexp.MustCompile(`\Acode\.cloudfoundry\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
+// // code.cloudfoundry.org/gofileutils -> github.com/cloudfoundry/gofileutils
+// var codeCloudfoundryOrgRe = regexp.MustCompile(`\Acode\.cloudfoundry\.org/([0-9A-Za-z][-0-9A-Za-z]+)\z`)
 
-func codeCloudfoundryOrgResolver(pkg string) (*mirror, error) {
-	if !codeCloudfoundryOrgRe.MatchString(pkg) {
-		return nil, nil
-	}
-	sm := codeCloudfoundryOrgRe.FindAllStringSubmatch(pkg, -1)
-	if len(sm) == 0 {
-		return nil, nil
-	}
-	return &mirror{GH, "cloudfoundry", sm[0][1], ""}, nil
-}
+// func codeCloudfoundryOrgResolver(pkg string) (*mirror, error) {
+// 	if !codeCloudfoundryOrgRe.MatchString(pkg) {
+// 		return nil, nil
+// 	}
+// 	sm := codeCloudfoundryOrgRe.FindAllStringSubmatch(pkg, -1)
+// 	if len(sm) == 0 {
+// 		return nil, nil
+// 	}
+// 	return &mirror{GH, "cloudfoundry", sm[0][1], ""}, nil
+// }
 
 // go.elastic.co/apm -> github.com/elastic/apm-agent-go
 // go.elastic.co/apm/module/apmhttp -> github.com/elastic/apm-agent-go/module/apmhttp
