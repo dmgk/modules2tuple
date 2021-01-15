@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dmgk/modules2tuple/config"
-	"github.com/dmgk/modules2tuple/debug"
+	"github.com/dmgk/modules2tuple/v2/config"
+	"github.com/dmgk/modules2tuple/v2/debug"
 )
 
 type SourceError string

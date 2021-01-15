@@ -14,7 +14,7 @@ or from ports:
 
 To install latest dev version directly from GitHub:
 
-    go get github.com/dmgk/modules2tuple
+    go get github.com/dmgk/modules2tuple/v2
 
 #### Usage
 

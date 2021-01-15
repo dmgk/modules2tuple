@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dmgk/modules2tuple/tuple"
+	"github.com/dmgk/modules2tuple/v2/tuple"
 )
 
 // Load parses tuples from vendor/modules.txt at path.

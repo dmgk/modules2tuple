@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dmgk/modules2tuple/config"
+	"github.com/dmgk/modules2tuple/v2/config"
 )
 
 func init() {

@@ -7,8 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/dmgk/modules2tuple/config"
-	"github.com/dmgk/modules2tuple/parser"
+	"github.com/dmgk/modules2tuple/v2/config"
+	"github.com/dmgk/modules2tuple/v2/parser"
 )
 
 var version = "devel"

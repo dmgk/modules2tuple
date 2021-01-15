@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dmgk/modules2tuple/config"
+	"github.com/dmgk/modules2tuple/v2/config"
 )
 
 type GithubCommit struct {

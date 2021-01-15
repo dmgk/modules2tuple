@@ -1,4 +1,4 @@
-module github.com/dmgk/modules2tuple
+module github.com/dmgk/modules2tuple/v2
 
 go 1.13
 

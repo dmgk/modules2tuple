@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dmgk/modules2tuple/config"
+	"github.com/dmgk/modules2tuple/v2/config"
 )
 
 func Print(v ...interface{}) {

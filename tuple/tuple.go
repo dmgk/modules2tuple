@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dmgk/modules2tuple/apis"
-	"github.com/dmgk/modules2tuple/config"
-	"github.com/dmgk/modules2tuple/debug"
+	"github.com/dmgk/modules2tuple/v2/apis"
+	"github.com/dmgk/modules2tuple/v2/config"
+	"github.com/dmgk/modules2tuple/v2/debug"
 )
 
 // Parse parses a package spec into Tuple.
