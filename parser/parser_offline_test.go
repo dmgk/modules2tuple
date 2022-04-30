@@ -1,3 +1,4 @@
+//go:build !online && !e2e
 // +build !online,!e2e
 
 package parser

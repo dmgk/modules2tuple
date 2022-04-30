@@ -62,7 +62,13 @@ func GithubHasTag(account, project, tag string) (bool, error) {
 
 	var ref GithubRef
 	if err := json.Unmarshal(resp, &ref); err != nil {
-		return false, fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+		switch err := err.(type) {
+		case *json.UnmarshalTypeError:
+			// type mismatch during unmarshal, tag was incomplete and the API returned an array
+			return false, nil
+		default:
+			return false, fmt.Errorf("error unmarshalling: %v, resp: %v", err, string(resp))
+		}
 	}
 
 	return true, nil
