@@ -99,7 +99,18 @@ func GithubListTags(account, project, tag string) ([]string, error) {
 }
 
 func GithubLookupTag(account, project, path, tag string) (string, error) {
-	hasTag, err := GithubHasTag(account, project, tag)
+	// Try prepending the path to the tag
+	hasTag, err := GithubHasTag(account, project, path+"/"+tag)
+	if err != nil {
+	        return "", err
+	}
+
+	// tag was found with path prepended
+	if hasTag {
+	        return path+"/"+tag, nil
+	}
+
+	hasTag, err = GithubHasTag(account, project, tag)
 	if err != nil {
 		return "", err
 	}
