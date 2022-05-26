@@ -1,4 +1,6 @@
-## Helper tool for generating GH_TUPLE and GL_TUPLE from vendor/modules.txt
+## modules2tuple
+
+Helper tool for generating GH_TUPLE and GL_TUPLE from vendor/modules.txt.
 
 ![Tests](https://github.com/dmgk/modules2tuple/actions/workflows/tests.yml/badge.svg)
 
@@ -14,7 +16,7 @@ or from ports:
 
 To install latest dev version directly from GitHub:
 
-    go get github.com/dmgk/modules2tuple/v2
+    go install github.com/dmgk/modules2tuple/v2
 
 #### Usage
 
