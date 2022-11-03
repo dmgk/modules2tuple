@@ -1254,8 +1254,6 @@ honnef.co/go/tools/unused
 honnef.co/go/tools/version
 # launchpad.net/gocheck v0.0.0-20140225173054-000000000087
 ## explicit
-# mellium.im/sasl v0.2.1
-mellium.im/sasl
 # mvdan.cc/interfacer v0.0.0-20180901003855-c20040233aed
 mvdan.cc/interfacer/check
 # mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b

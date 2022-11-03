@@ -225,7 +225,6 @@ GH_TUPLE=	\
 		mattn:go-isatty:v0.0.8:mattn_go_isatty/vendor/github.com/mattn/go-isatty \
 		mattn:go-runewidth:v0.0.4:mattn_go_runewidth/vendor/github.com/mattn/go-runewidth \
 		matttproud:golang_protobuf_extensions:v1.0.1:matttproud_golang_protobuf_extensions/vendor/github.com/matttproud/golang_protobuf_extensions \
-		mellium:sasl:v0.2.1:mellium_sasl/vendor/mellium.im/sasl \
 		mgutz:ansi:9520e82c474b:mgutz_ansi/vendor/github.com/mgutz/ansi \
 		mholt:archiver:v3.1.1:mholt_archiver/vendor/github.com/mholt/archiver \
 		miekg:dns:v1.1.12:miekg_dns/vendor/github.com/miekg/dns \

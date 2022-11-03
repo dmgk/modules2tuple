@@ -74,8 +74,8 @@ func GithubHasTag(account, project, tag string) (bool, error) {
 	return true, nil
 }
 
-func GithubListTags(account, project, tag string) ([]string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags", url.PathEscape(account), url.PathEscape(project))
+func GithubListTags(account, project, prefix string) ([]string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", url.PathEscape(account), url.PathEscape(project), url.PathEscape(prefix))
 
 	resp, err := get(url, config.GithubUsername, config.GithubToken)
 	if err != nil {
@@ -110,7 +110,7 @@ func GithubLookupTag(account, project, path, tag string) (string, error) {
 	}
 
 	// tag was not found, try to look it up
-	allTags, err := GithubListTags(account, project, tag)
+	allTags, err := GithubListTags(account, project, path)
 	if err != nil {
 		return "", err
 	}
